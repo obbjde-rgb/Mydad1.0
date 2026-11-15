@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Medad live</title>
+    <meta name="description" content="تطبيق متطور لترتيل القرآن الكريم وتصحيح التلاوة باستخدام الذكاء الاصطناعي، مع دعم التلاوات البشرية والوضع الليلي." />
+    <meta property="og:title" content="Medad live" />
+    <meta property="og:description" content="تطبيق متطور لترتيل القرآن الكريم وتصحيح التلاوة باستخدام الذكاء الاصطناعي، مع دعم التلاوات البشرية والوضع الليلي." />
+    <meta name="theme-color" content="#101825" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Medad live" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/pwa-512x512.png" />
+    <script>
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        window.__deferredPWAInstallPrompt = e;
+      });
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      (function(){
+        if(!window.chatbase||window.chatbase("getState")!=="initialized"){
+          window.chatbase=(...arguments)=>{
+            if(!window.chatbase.q){window.chatbase.q=[]}
+            window.chatbase.q.push(arguments);
+          };
+          window.chatbase=new Proxy(window.chatbase,{
+            get(target,prop){
+              if(prop==="q"){return target.q}
+              return(...args)=>target(prop,...args);
+            }
+          });
+        }
+        const identifyUser = async () => {
+          try {
+            const res = await fetch('/api/chatbase/token');
+            if (res.ok) {
+              const data = await res.json();
+              if (data.token && window.chatbase) {
+                window.chatbase('identify', { token: data.token });
+              }
+            }
+          } catch (e) {
+            console.warn('Chatbase identity verification skipped or failed:', e);
+          }
+        };
+
+        const onLoad=function(){
+          const script=document.createElement("script");
+          script.src="https://www.chatbase.co/embed.min.js";
+          script.id="UKTFt1UYRMXEGBSoAslXj";
+          script.domain="www.chatbase.co";
+          script.onload = identifyUser;
+          (document.body || document.head).appendChild(script);
+        };
+        if(document.readyState==="complete"){
+          onLoad();
+        }else{
+          window.addEventListener("load",onLoad);
+        }
+      })();
+    </script>
+  </body>
+</html>
+
