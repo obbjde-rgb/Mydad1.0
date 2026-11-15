@@ -2,6 +2,7 @@ import { GoogleGenAI, Modality, ThinkingLevel, LiveServerMessage } from "@google
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
+import fs from "fs";
 import cors from "cors";
 import { WebSocketServer } from "ws";
 import { Communicate } from '@travisvn/edge-tts';
@@ -1137,7 +1138,8 @@ ${systemInstruction || ''}`;
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    const cwdDist = path.join(process.cwd(), 'dist');
+    const distPath = fs.existsSync(path.join(cwdDist, 'index.html')) ? cwdDist : __dirname;
     app.use(express.static(distPath, {
       setHeaders: (res, filePath) => {
         if (filePath.endsWith('.webmanifest')) {
@@ -1145,10 +1147,13 @@ ${systemInstruction || ''}`;
           res.setHeader('Cache-Control', 'no-cache');
         } else if (filePath.endsWith('sw.js') || filePath.endsWith('registerSW.js')) {
           res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        } else if (filePath.endsWith('index.html')) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         }
       },
     }));
     app.get('*', (req, res) => {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
