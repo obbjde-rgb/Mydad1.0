@@ -7,6 +7,9 @@ import cors from "cors";
 import { WebSocketServer } from "ws";
 import { Communicate } from '@travisvn/edge-tts';
 import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const islamicTools = [{
   functionDeclarations: [
@@ -148,9 +151,14 @@ async function startServer() {
   const getEnvKey = (v: any) => (v && typeof v === 'string' && v.trim() !== '') ? v.trim() : '';
 
   const getFinalKey = (apiKey: string | undefined): string | undefined => {
-    const val = apiKey || process.env.GEMINI_API_KEY || process.env.API_KEY;
-    if (val && typeof val === 'string' && val.trim() !== '') {
-      const v = val.trim();
+    // مفاتيح البيئة (process.env) موثوقة وتُستخدم كما هي دون رفض القيم الابتدائية
+    const envKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+    if (envKey && typeof envKey === 'string' && envKey.trim() !== '') {
+      return envKey.trim();
+    }
+    // مفتاح العميل يُفحص للتأكد من أنه ليس قيمة افتراضية placeholder
+    if (apiKey && typeof apiKey === 'string' && apiKey.trim() !== '') {
+      const v = apiKey.trim();
       if (v.startsWith('YOUR_') || v.startsWith('MY_') || v.length < 10) return undefined;
       return v;
     }
