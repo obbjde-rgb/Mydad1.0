@@ -202,6 +202,17 @@ async function startServer() {
     }
   };
 
+  const getMidadFallbackReply = (message: string): string => {
+    const lower = (message || '').toLowerCase();
+    if (lower.includes('مخارج') || lower.includes('حرف')) {
+      return "مرحباً بك يا طالب العلم القرآني. مخارج الحروف تنقسم إلى خمسة مخارج رئيسية: الجوف، والحلق، اللسان، الشفتان، والخيشوم. فاحرص على إعطاء كل حرف حقه ومستحقه من الصفات.";
+    }
+    if (lower.includes('تجويد') || lower.includes('نون') || lower.includes('ميم')) {
+      return "أهلاً بك في رحاب التجويد. أحكام النون الساكنة والتنوين أربعة: الإظهار، والإدغام، والقلب، والإخفاء الحقيقي. تلاوة كتاب الله تتطلب المشافهة والإتقان عن الشيوخ.";
+    }
+    return "بسم الله الرحمن الرحيم. أنا «مداد الرحمن»، لسان الآية الكريمة ﴿لَوْ كَانَ الْبَحْرُ مِدَادًا لِكَلِمَاتِ رَبِّي لَنَفِدَ الْبَحْرُ قَبْلَ أَنْ تَنْفَدَ كَلِمَاتُ رَبِّي﴾. كيف يمكنني أن أساعدك في الغوص في هذا البحر الذي لا ينفد؟ سل عما شئت من علوم التجويد والقراءات.";
+  };
+
   const supportsThinking = (mName: string): boolean => {
     const m = mName.toLowerCase();
     return m.includes('thinking') || m.includes('2.5') || m.includes('gemini-3') || m.includes('r1');
@@ -279,9 +290,8 @@ async function startServer() {
     try {
       const { message, apiKey, systemInstruction, history } = req.body;
       const finalKey = process.env.GEMINI_API_KEY || apiKey;
-      if (!finalKey) return res.status(401).json({ error: "Gemini API key is missing" });
 
-      const ai = new GoogleGenAI({ apiKey: finalKey });
+      const ai = finalKey ? new GoogleGenAI({ apiKey: finalKey }) : null;
       const model = 'gemini-2.5-flash';
       
       const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
@@ -306,22 +316,22 @@ async function startServer() {
 ${systemInstruction || ''}`;
 
       let replyText = "";
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents,
-          config: { systemInstruction: refinedSystemInstruction }
-        });
-        replyText = response.text || "";
-      } catch (apiErr: any) {
-        console.warn("[Chat API Quota/Error fallback]", apiErr?.message);
-        if (message.includes('مخارج') || message.includes('حرف')) {
-          replyText = "مرحباً بك يا طالب العلم القرآني. مخارج الحروف تنقسم إلى خمسة مخارج رئيسية: الجوف، والحلق، اللسان، الشفتان، والخيشوم. فاحرص على إعطاء كل حرف حقه ومستحقه من الصفات.";
-        } else if (message.includes('تجويد') || message.includes('نون') || message.includes('ميم')) {
-          replyText = "أهلاً بك في رحاب التجويد. أحكام النون الساكنة والتنوين أربعة: الإظهار، والإدغام، والقلب، والإخفاء الحقيقي. تلاوة كتاب الله تتطلب المشافهة والإتقان عن الشيوخ.";
-        } else {
-          replyText = "أنا 'مداد الرحمن'، مقرئك ومعلمك لكتاب الله عز وجل. ذكرت لي سابقاً ما سألت عنه، وأنا أتابع معك بكل تركيز. سل عما شئت من علوم التجويد والقراءات.";
+      if (ai) {
+        try {
+          const response = await ai.models.generateContent({
+            model,
+            contents,
+            config: { systemInstruction: refinedSystemInstruction }
+          });
+          replyText = response.text || "";
+        } catch (apiErr: any) {
+          console.warn("[Chat API Quota/Error fallback]", apiErr?.message);
+          replyText = getMidadFallbackReply(message);
         }
+      } else {
+        // no API key available -> simulated reply so the chat UI can be tested
+        replyText = getMidadFallbackReply(message);
+        console.warn("[Chat] No Gemini API key configured — using simulated reply for testing.");
       }
 
       if (replyText.includes('نموذج لغوي') || replyText.includes('ذكاء اصطناعي') || replyText.includes('Google') || replyText.includes('مساعد ذكي')) {
@@ -340,7 +350,12 @@ ${systemInstruction || ''}`;
       const { apiKey, model, messages, config } = req.body;
       const finalKey = getFinalKey(apiKey);
       
-      if (!finalKey) return res.status(401).json({ error: "Gemini API key is missing" });
+      if (!finalKey) {
+        // no API key available -> simulated reply so the chat UI can be tested
+        const lastUserMsg = (Array.isArray(messages) ? messages.filter((m: any) => m.role === 'user').pop() : null)?.content || "";
+        console.warn("[Generate] No Gemini API key configured — using simulated reply for testing.");
+        return res.json({ content: getMidadFallbackReply(lastUserMsg), model: "gemini-3-flash-preview (simulated)", groundingMetadata: null, thought: null });
+      }
 
       const requestedModel = model || 'gemini-2.5-flash';
       const reqWebSearch = !!config?.enableWebSearch;
@@ -449,7 +464,23 @@ ${systemInstruction || ''}`;
     try {
       const { apiKey, model, messages, config } = req.body;
       const finalKey = getFinalKey(apiKey);
-      if (!finalKey) return res.status(401).json({ error: "Gemini API key is missing" });
+
+      if (!finalKey) {
+        // no API key available -> simulated SSE reply so the chat UI can be tested
+        const lastUserMsg = (Array.isArray(messages) ? messages.filter((m: any) => m.role === 'user').pop() : null)?.content || "";
+        const reply = getMidadFallbackReply(lastUserMsg);
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        for (let i = 0; i < reply.length; i += 12) {
+          res.write("data: " + JSON.stringify({ text: reply.slice(i, i + 12), groundingMetadata: null, thought: null }) + "\n\n");
+          await new Promise(r => setTimeout(r, 20));
+        }
+        res.write("data: [DONE]\n\n");
+        res.end();
+        console.warn("[Stream] No Gemini API key configured — using simulated reply for testing.");
+        return;
+      }
 
       const requestedModel = model || 'gemini-2.5-flash';
       const reqWebSearch = !!config?.enableWebSearch;
