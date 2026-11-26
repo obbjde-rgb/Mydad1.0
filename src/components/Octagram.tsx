@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const Octagram = () => {
@@ -16,72 +16,97 @@ export const Octagram = () => {
   ];
 
   return (
-    <div className="py-5 px-14 sm:px-16 inline-flex items-center justify-center">
+    <motion.div 
+      className="relative w-40 h-40 flex items-center justify-center cursor-pointer group"
+      onClick={() => setIsGlowing(!isGlowing)}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+    >
+      {/* Dynamic Glow Background */}
+      <AnimatePresence>
+        {isGlowing && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ 
+              opacity: [0.4, 0.7, 0.4], 
+              scale: [1, 1.3, 1],
+              rotate: [0, 90, 180, 270, 360]
+            }}
+            exit={{ opacity: 0, scale: 0.5 }}
+            transition={{ 
+              duration: 4, 
+              repeat: Infinity, 
+              ease: "linear" 
+            }}
+            className="absolute inset-0 bg-gradient-to-tr from-amber-400 via-orange-500 to-yellow-300 blur-2xl rounded-full -z-10 opacity-50"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Octagram shape layers */}
       <motion.div 
-        className="relative w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center cursor-pointer group"
-        onClick={() => setIsGlowing(!isGlowing)}
-        whileHover={{ scale: 1.04 }}
-        whileTap={{ scale: 0.96 }}
-        title="النجمة الثمانية التفاعلية"
-      >
-        {/* Subtle Interactive Aura */}
-        <AnimatePresence>
-          {isGlowing && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.85 }}
-              animate={{ opacity: [0.3, 0.55, 0.3], scale: [1, 1.15, 1] }}
-              exit={{ opacity: 0, scale: 0.7 }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute inset-0 bg-amber-400/35 blur-xl rounded-full -z-10"
-            />
-          )}
-        </AnimatePresence>
+        animate={isGlowing ? { rotate: 405, scale: 1.1 } : { rotate: 45, scale: 1 }}
+        className="absolute w-24 h-24 border-2 border-amber-600/60 rounded-sm shadow-lg shadow-amber-500/20"
+      ></motion.div>
+      <motion.div 
+        animate={isGlowing ? { rotate: 360, scale: 1.1 } : { rotate: 0, scale: 1 }}
+        className="absolute w-24 h-24 border-2 border-amber-600/60 rounded-sm shadow-lg shadow-amber-500/20"
+      ></motion.div>
+      
+      {/* Central point - The "Heart" */}
+      <motion.div 
+        animate={isGlowing ? { 
+          scale: [1, 1.5, 1],
+          backgroundColor: ["#d97706", "#fbbf24", "#d97706"],
+          boxShadow: ["0 0 10px #d97706", "0 0 30px #fbbf24", "0 0 10px #d97706"]
+        } : {}}
+        transition={{ duration: 2, repeat: Infinity }}
+        className="absolute w-6 h-6 bg-amber-600 rounded-full z-10"
+      ></motion.div>
 
-        {/* Octagram shape layers */}
-        <motion.div 
-          animate={isGlowing ? { rotate: 405, scale: 1.05 } : { rotate: 45, scale: 1 }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
-          className="absolute w-16 h-16 sm:w-20 sm:h-20 border-2 border-amber-600/55 dark:border-amber-400/50 rounded-sm"
+      {/* Decorative Particles when glowing */}
+      {isGlowing && [...Array(8)].map((_, i) => (
+        <motion.div
+          key={`particle-${i}`}
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{ 
+            opacity: [0, 1, 0],
+            scale: [0, 1.5, 0],
+            x: Math.cos(i * Math.PI / 4) * 60,
+            y: Math.sin(i * Math.PI / 4) * 60
+          }}
+          transition={{ duration: 2, repeat: Infinity, delay: i * 0.2 }}
+          className="absolute w-2 h-2 bg-amber-400 rounded-full blur-[1px]"
         />
+      ))}
+
+      {points.map((p, i) => (
         <motion.div 
-          animate={isGlowing ? { rotate: 360, scale: 1.05 } : { rotate: 0, scale: 1 }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
-          className="absolute w-16 h-16 sm:w-20 sm:h-20 border-2 border-amber-600/55 dark:border-amber-400/50 rounded-sm"
-        />
-        
-        {/* Central point */}
-        <motion.div 
+          key={i} 
           animate={isGlowing ? { 
-            scale: [1, 1.3, 1],
-            backgroundColor: ["#d97706", "#f59e0b", "#d97706"]
+            y: [0, -5, 0],
+            color: ["#78350f", "#b45309", "#78350f"]
           } : {}}
-          transition={{ duration: 2, repeat: Infinity }}
-          className="w-4 h-4 bg-amber-600 dark:bg-amber-400 rounded-full z-10 shadow-sm"
-        />
-
-        {points.map((p, i) => (
-          <div 
-            key={i} 
-            className={`absolute text-amber-900/90 dark:text-amber-100/90 text-[10px] font-kufi font-bold whitespace-nowrap z-20 ${getPosClass(p.pos)}`}
-          >
-            {p.name}
-          </div>
-        ))}
-      </motion.div>
-    </div>
+          transition={{ duration: 3, repeat: Infinity, delay: i * 0.1 }}
+          className={`absolute text-amber-900 dark:text-amber-100 text-[10px] font-kufi font-bold whitespace-nowrap z-20 ${getPosClass(p.pos)}`}
+        >
+          {p.name}
+        </motion.div>
+      ))}
+    </motion.div>
   );
 };
 
 const getPosClass = (pos: string) => {
   switch (pos) {
-    case "top": return "-top-5 left-1/2 -translate-x-1/2";
-    case "top-right": return "-top-2 -right-12 sm:-right-14";
-    case "top-left": return "-top-2 -left-12 sm:-left-14";
-    case "right": return "-right-14 sm:-right-16 top-1/2 -translate-y-1/2";
-    case "bottom-right": return "-bottom-2 -right-12 sm:-right-14";
-    case "bottom": return "-bottom-5 left-1/2 -translate-x-1/2";
-    case "bottom-left": return "-bottom-2 -left-12 sm:-left-14";
-    case "left": return "-left-14 sm:-left-16 top-1/2 -translate-y-1/2";
+    case "top": return "-top-8";
+    case "top-right": return "-top-4 -right-14";
+    case "top-left": return "-top-4 -left-14";
+    case "right": return "-right-16";
+    case "bottom-right": return "-bottom-4 -right-14";
+    case "bottom": return "-bottom-8";
+    case "bottom-left": return "-bottom-4 -left-14";
+    case "left": return "-left-16";
     default: return "";
   }
 };

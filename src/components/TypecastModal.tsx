@@ -27,24 +27,23 @@ export const TypecastModal: React.FC<TypecastModalProps> = ({ isOpen, onClose, t
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
           />
           <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 12 }}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 12 }}
-            className="relative w-full max-w-5xl h-[90vh] bg-white dark:bg-[#171412] rounded-2xl shadow-2xl border border-amber-200/60 dark:border-amber-900/50 overflow-hidden flex flex-col"
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="relative w-full max-w-5xl h-[90vh] bg-white dark:bg-[#1c1917] rounded-2xl shadow-2xl overflow-hidden flex flex-col"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-amber-200/50 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/20 z-10">
+            <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-100 dark:border-amber-900/30 bg-white dark:bg-gray-900 z-10">
               <div className="flex items-center gap-2">
                 <button
                   onClick={onClose}
-                  className="w-9 h-9 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-xl flex items-center justify-center transition-colors text-amber-800 dark:text-amber-200"
-                  aria-label="إغلاق"
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-500 dark:text-gray-400"
                 >
-                  <X size={18} />
+                  <X size={20} />
                 </button>
                 <button
                   onClick={() => setShowText(!showText)}
-                  className="h-9 px-3.5 bg-amber-100/80 dark:bg-amber-900/35 text-amber-900 dark:text-amber-200 rounded-xl text-xs font-bold hover:bg-amber-200/80 dark:hover:bg-amber-900/55 transition-colors"
+                  className="px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-lg text-sm font-bold hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors"
                 >
                   {showText ? 'إخفاء النص' : 'إظهار النص'}
                 </button>
@@ -54,10 +53,10 @@ export const TypecastModal: React.FC<TypecastModalProps> = ({ isOpen, onClose, t
                 href="https://typecast.ai/text-to-speech/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-amber-950 dark:text-amber-100 font-bold hover:text-amber-700 dark:hover:text-amber-300 transition-colors text-sm sm:text-base"
+                className="flex items-center gap-2 text-gray-800 dark:text-gray-100 font-bold hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors sm:text-lg text-base"
               >
                 <span>مساحة عمل Typecast.ai</span>
-                <ExternalLink size={16} className="text-amber-600 dark:text-amber-400" />
+                <ExternalLink size={18} className="text-emerald-600 dark:text-emerald-400" />
               </a>
             </div>
 
@@ -69,7 +68,7 @@ export const TypecastModal: React.FC<TypecastModalProps> = ({ isOpen, onClose, t
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  className="border-b border-amber-200/50 dark:border-amber-900/40 bg-white/95 dark:bg-[#171412]/95 z-10"
+                  className="border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 z-10"
                 >
                   <div className="p-3 sm:p-4 flex items-center gap-3">
                     <button 
@@ -78,12 +77,12 @@ export const TypecastModal: React.FC<TypecastModalProps> = ({ isOpen, onClose, t
                           navigator.clipboard.writeText(text).catch(console.error);
                         }
                       }}
-                      className="flex-shrink-0 h-10 flex items-center gap-2 px-4 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs sm:text-sm font-bold transition-colors shadow-sm"
+                      className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold transition-colors shadow-sm"
                     >
-                      <Play size={15} className="fill-current" />
-                      <span>نسخ النص</span>
+                      <Play size={16} className="fill-current" />
+                      <span>نسخ وتشغيل</span>
                     </button>
-                    <div className="flex-1 p-2.5 bg-amber-50/50 dark:bg-black/25 rounded-xl text-xs sm:text-sm text-amber-950/85 dark:text-amber-100/85 max-h-24 overflow-y-auto border border-amber-200/50 dark:border-amber-900/40 leading-relaxed">
+                    <div className="flex-1 p-2.5 bg-gray-50 dark:bg-[#292524] rounded-xl text-sm text-gray-700 dark:text-gray-300 max-h-24 overflow-y-auto border border-gray-200 dark:border-amber-900/50 font-vazir leading-relaxed">
                       {text}
                     </div>
                   </div>
@@ -92,7 +91,7 @@ export const TypecastModal: React.FC<TypecastModalProps> = ({ isOpen, onClose, t
             </AnimatePresence>
 
             {/* Iframe */}
-            <div className="flex-1 w-full bg-amber-50/20 dark:bg-[#0c0a09] relative">
+            <div className="flex-1 w-full bg-gray-50 dark:bg-gray-950 relative">
               <iframe
                 src="https://typecast.ai/text-to-speech/"
                 className="absolute inset-0 w-full h-full border-0"

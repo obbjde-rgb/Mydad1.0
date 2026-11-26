@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Book, Compass, Search, Play, Volume2, Sparkles, X, ChevronRight, Activity, Cpu } from 'lucide-react';
+import { Book, Compass, FileText, Search, Play, Volume2, Sparkles, HelpCircle, X, ChevronRight, Activity, Cpu } from 'lucide-react';
 
 interface SemanticComparison {
   wordA: string;
@@ -143,20 +143,20 @@ export const SemanticPrecisionAnalyzer: React.FC<SemanticPrecisionAnalyzerProps>
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in" dir="rtl">
-      <div className="relative w-full max-w-4xl bg-stone-900 border border-amber-500/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-4xl bg-stone-900 border border-amber-500/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Header */}
         <div className="p-5 bg-gradient-to-r from-stone-950 via-amber-950 to-stone-900 border-b border-amber-500/20 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-amber-500/20 rounded-xl border border-amber-400/30">
-              <Cpu className="w-6 h-6 text-amber-400" />
+            <div className="p-2.5 bg-amber-500/20 rounded-2xl border border-amber-400/30">
+              <Cpu className="w-6 h-6 text-amber-400 animate-spin-slow" />
             </div>
             <div>
               <h2 className="text-lg font-bold font-serif text-amber-100">محلل الفروق اللغوية والإعجاز الصوتي «Semantic Micro-Precision»</h2>
               <p className="text-xs text-amber-200/70">تفكيك ميكرو-دلالي للمترادفات القرآنية وبنيتها الترددية والأثر الصوتي والنفسي</p>
             </div>
           </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-colors flex items-center justify-center">
+          <button onClick={onClose} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -203,20 +203,20 @@ export const SemanticPrecisionAnalyzer: React.FC<SemanticPrecisionAnalyzerProps>
               </div>
 
               {/* Detail display */}
-              <div className="lg:col-span-2 bg-stone-950/40 border border-zinc-800 rounded-2xl p-5 space-y-5">
+              <div className="lg:col-span-2 bg-stone-950/40 border border-zinc-800 rounded-3xl p-5 space-y-5">
                 <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
                   <h3 className="text-base font-bold text-amber-100 font-serif">{selectedPreset.title}</h3>
                   <span className="text-xs text-amber-400 font-mono">التباعد الصوتي الدقيق</span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   {/* Word A */}
                   <div className="p-4 rounded-2xl bg-amber-600/5 border border-amber-500/10 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-2xl font-serif font-extrabold text-amber-400">{selectedPreset.wordA}</span>
                       <span className="text-[11px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 font-mono">الجذر: {selectedPreset.rootA}</span>
                     </div>
-                    <div className="text-[11px] text-zinc-400 font-mono tabular-nums">تكرار اللفظ بالقرآن: {selectedPreset.frequencyA} مرة</div>
+                    <div className="text-[11px] text-zinc-400 font-mono">تكرار اللفظ بالقرآن: {selectedPreset.frequencyA} مرة</div>
                     <div className="text-xs text-zinc-300 font-serif leading-relaxed">
                       <strong className="text-[11px] text-amber-300 block mb-0.5">البنية الموجية والصوتية:</strong>
                       {selectedPreset.acousticResonanceA}
@@ -233,7 +233,7 @@ export const SemanticPrecisionAnalyzer: React.FC<SemanticPrecisionAnalyzerProps>
                       <span className="text-2xl font-serif font-extrabold text-emerald-400">{selectedPreset.wordB}</span>
                       <span className="text-[11px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 font-mono">الجذر: {selectedPreset.rootB}</span>
                     </div>
-                    <div className="text-[11px] text-zinc-400 font-mono tabular-nums">تكرار اللفظ بالقرآن: {selectedPreset.frequencyB} مرة</div>
+                    <div className="text-[11px] text-zinc-400 font-mono">تكرار اللفظ بالقرآن: {selectedPreset.frequencyB} مرة</div>
                     <div className="text-xs text-zinc-300 font-serif leading-relaxed">
                       <strong className="text-[11px] text-emerald-300 block mb-0.5">البنية الموجية والصوتية:</strong>
                       {selectedPreset.acousticResonanceB}
@@ -246,8 +246,8 @@ export const SemanticPrecisionAnalyzer: React.FC<SemanticPrecisionAnalyzerProps>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-stone-900 border border-zinc-800 space-y-2">
-                  <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-                    <Activity className="w-3.5 h-3.5 text-amber-500" />
+                  <span className="text-xs font-bold text-amber-400 flex items-center gap-1">
+                    <Activity className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
                     <span>الفارق الدلالي وعيون البلاغة القرآنية:</span>
                   </span>
                   <p className="text-xs text-zinc-300 font-serif leading-relaxed">
@@ -280,7 +280,7 @@ export const SemanticPrecisionAnalyzer: React.FC<SemanticPrecisionAnalyzerProps>
           ) : (
             <div className="space-y-6">
               {/* Explorer interface */}
-              <div className="bg-stone-950/40 border border-zinc-800 rounded-2xl p-5 space-y-4">
+              <div className="bg-stone-950/40 border border-zinc-800 rounded-3xl p-5 space-y-4">
                 <span className="text-xs font-bold text-amber-500 block font-kufi">مستكشف الدلالات اللغوية الذكي لأي جذر:</span>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
@@ -297,7 +297,7 @@ export const SemanticPrecisionAnalyzer: React.FC<SemanticPrecisionAnalyzerProps>
                   <button
                     onClick={handleAnalyzeCustom}
                     disabled={isAnalyzing || !customWord.trim()}
-                    className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs disabled:opacity-50 flex items-center gap-2 shrink-0 whitespace-nowrap"
+                    className="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs disabled:opacity-50 flex items-center gap-2"
                   >
                     {isAnalyzing ? (
                       <>
@@ -317,13 +317,13 @@ export const SemanticPrecisionAnalyzer: React.FC<SemanticPrecisionAnalyzerProps>
               {customAnalysisResult && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
                   {/* Left: Stats */}
-                  <div className="md:col-span-1 bg-stone-950/40 border border-zinc-800 rounded-2xl p-5 space-y-4">
-                    <h4 className="text-xs font-bold text-amber-400 font-kufi">المقاييس الصوتية</h4>
+                  <div className="md:col-span-1 bg-stone-950/40 border border-zinc-800 rounded-3xl p-5 space-y-4">
+                    <h4 className="text-xs font-bold text-amber-400 uppercase font-kufi">المقاييس الصوتية</h4>
                     <div className="space-y-3">
                       <div>
                         <div className="flex justify-between text-xs mb-1">
                           <span className="text-zinc-400">الطاقة الحنجرية والجهر:</span>
-                          <span className="text-amber-400 font-bold tabular-nums">{customAnalysisResult.energyLevel}%</span>
+                          <span className="text-amber-400 font-bold">{customAnalysisResult.energyLevel}%</span>
                         </div>
                         <div className="h-2 w-full bg-zinc-800 rounded-full overflow-hidden">
                           <div className="h-full bg-gradient-to-r from-amber-600 to-amber-400 rounded-full" style={{ width: `${customAnalysisResult.energyLevel}%` }} />
@@ -333,7 +333,7 @@ export const SemanticPrecisionAnalyzer: React.FC<SemanticPrecisionAnalyzerProps>
                       <div>
                         <div className="flex justify-between text-xs mb-1">
                           <span className="text-zinc-400">التردد الذهني الفونيمي:</span>
-                          <span className="text-emerald-400 font-bold tabular-nums">{customAnalysisResult.frequency} Hz</span>
+                          <span className="text-emerald-400 font-bold">{customAnalysisResult.frequency} Hz</span>
                         </div>
                         <div className="h-2 w-full bg-zinc-800 rounded-full overflow-hidden">
                           <div className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full" style={{ width: `${Math.min(100, customAnalysisResult.frequency / 8)}%` }} />
@@ -341,14 +341,14 @@ export const SemanticPrecisionAnalyzer: React.FC<SemanticPrecisionAnalyzerProps>
                       </div>
 
                       <div className="p-3 bg-stone-900 border border-zinc-800/80 rounded-xl space-y-1.5">
-                        <span className="text-[11px] text-zinc-400 block font-mono">الجذر الصرفي المفكك:</span>
-                        <div className="text-xl font-serif text-amber-200 font-extrabold">{customAnalysisResult.root}</div>
+                        <span className="text-[10px] text-zinc-500 uppercase block font-mono">الجذر الصرفي المفكك:</span>
+                        <div className="text-xl font-serif text-amber-200 tracking-widest font-extrabold">{customAnalysisResult.root}</div>
                       </div>
                     </div>
                   </div>
 
                   {/* Right: Detailed text analysis */}
-                  <div className="md:col-span-2 bg-stone-950/40 border border-zinc-800 rounded-2xl p-5 space-y-4">
+                  <div className="md:col-span-2 bg-stone-950/40 border border-zinc-800 rounded-3xl p-5 space-y-4">
                     <div>
                       <h4 className="text-xs font-bold text-amber-400 font-kufi mb-1">الأثر الصوتي والترددي اللفظي:</h4>
                       <p className="text-xs text-zinc-300 font-serif leading-relaxed bg-stone-900 p-3 rounded-xl border border-zinc-800/60">
@@ -365,7 +365,7 @@ export const SemanticPrecisionAnalyzer: React.FC<SemanticPrecisionAnalyzerProps>
 
                     <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-2xl">
                       <span className="text-xs font-bold text-amber-400 block mb-1">الرسم الإعجازي في آيات الوحي:</span>
-                      <p className="text-sm text-center font-serif text-amber-100 leading-relaxed py-1">
+                      <p className="text-sm text-center font-serif text-amber-100 italic leading-relaxed py-1">
                         {customAnalysisResult.verse}
                       </p>
                     </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Compass, MapPin, AlertCircle, Navigation, Share2 } from 'lucide-react';
 
@@ -65,13 +65,11 @@ export const QiblaSection = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
-      <div className="flex items-center justify-between gap-4 bg-white/95 dark:bg-[#171412]/95 p-5 sm:p-6 rounded-2xl border border-amber-200/50 dark:border-amber-900/40 shadow-sm">
-        <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-amber-950 dark:text-amber-50 font-kufi">اتجاه القبلة</h2>
-          <p className="text-xs sm:text-sm text-amber-800/70 dark:text-amber-300/70 mt-1">تحديد اتجاه القبلة بناءً على موقعك الحالي</p>
-        </div>
-        {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && coords && qiblaAngle !== null && (
+    <div className="space-y-8 max-w-2xl mx-auto">
+      <div className="text-center space-y-4 relative">
+        <h2 className="text-5xl font-black text-amber-900 dark:text-amber-100">اتجاه القبلة</h2>
+        <p className="text-xl text-amber-800 dark:text-amber-400/60">تحديد اتجاه القبلة بناءً على موقعك الحالي</p>
+        {navigator.share && coords && qiblaAngle !== null && (
           <button
             onClick={() => {
               navigator.share({
@@ -79,45 +77,55 @@ export const QiblaSection = () => {
                 text: `موقعي الحالي: ${coords.lat.toFixed(4)}° N, ${coords.lng.toFixed(4)}° E\nزاوية القبلة: ${qiblaAngle.toFixed(1)}° من الشمال`
               }).catch(console.error);
             }}
-            className="w-9 h-9 flex items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors shrink-0"
+            className="absolute top-0 left-0 p-3 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
             title="مشاركة اتجاه القبلة"
           >
-            <Share2 size={17} />
+            <Share2 size={24} />
           </button>
         )}
       </div>
 
-      <div className="bg-white/95 dark:bg-[#171412]/95 p-6 sm:p-10 rounded-2xl shadow-sm border border-amber-200/50 dark:border-amber-900/40 flex flex-col items-center space-y-8 relative overflow-hidden">
+      <div className="bg-white dark:bg-[#1c1917] p-12 rounded-[4rem] shadow-2xl border border-amber-100 dark:border-amber-900 flex flex-col items-center space-y-12 relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none select-none">
+          <div className="grid grid-cols-4 gap-12 p-12">
+            {Array.from({ length: 16 }).map((_, i) => <div key={i} className="text-7xl text-amber-900 font-quran">۞</div>)}
+          </div>
+        </div>
+
         {error ? (
-          <div className="flex flex-col items-center text-center space-y-3 text-red-600 dark:text-red-400 p-6 bg-red-50/70 dark:bg-red-900/10 rounded-2xl border border-red-200/60 dark:border-red-900/30 w-full">
-            <AlertCircle size={36} />
-            <p className="text-sm sm:text-base font-bold">{error}</p>
+          <div className="flex flex-col items-center text-center space-y-4 text-red-600 dark:text-red-400 p-8 bg-red-50 dark:bg-red-900/10 rounded-3xl border border-red-100 dark:border-red-900/30">
+            <AlertCircle size={48} />
+            <p className="text-xl font-bold">{error}</p>
           </div>
         ) : !coords ? (
-          <div className="flex flex-col items-center space-y-4 py-8">
-            <div className="w-10 h-10 border-3 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-sm sm:text-base text-amber-800 dark:text-amber-200 font-medium">جاري تحديد موقعك...</p>
+          <div className="flex flex-col items-center space-y-6">
+            <div className="w-16 h-16 border-4 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-xl text-amber-800 dark:text-amber-200">جاري تحديد موقعك...</p>
           </div>
         ) : (
           <>
-            <div className="relative w-64 h-64 sm:w-72 sm:h-72">
-              <div className="absolute inset-0 border-4 border-amber-100 dark:border-amber-900/40 rounded-full"></div>
-
-              <motion.div
+            <div className="relative w-72 h-72">
+              {/* Compass Ring */}
+              <div className="absolute inset-0 border-8 border-amber-100 dark:border-amber-900/30 rounded-full shadow-inner"></div>
+              
+              {/* Compass Needle Container */}
+              <motion.div 
                 className="absolute inset-0 flex items-center justify-center"
                 animate={{ rotate: -heading }}
                 transition={{ type: 'spring', stiffness: 50 }}
               >
-                <Compass size={220} className="text-amber-200 dark:text-amber-900/30" strokeWidth={0.6} />
-
+                <Compass size={240} className="text-amber-200 dark:text-amber-900/20" strokeWidth={0.5} />
+                
+                {/* Qibla Indicator */}
                 {qiblaAngle !== null && (
-                  <motion.div
+                  <motion.div 
                     className="absolute inset-0 flex items-center justify-center"
                     style={{ rotate: qiblaAngle }}
                   >
                     <div className="relative h-full w-1 flex justify-center">
-                      <div className="absolute top-0 w-8 h-8 bg-amber-600 rounded-full shadow-md flex items-center justify-center -translate-y-3">
-                        <Navigation size={15} className="text-white fill-current" />
+                      <div className="absolute top-0 w-8 h-8 bg-amber-600 rounded-full shadow-lg flex items-center justify-center -translate-y-4">
+                        <Navigation size={16} className="text-white fill-current" />
                       </div>
                       <div className="w-1 h-1/2 bg-gradient-to-b from-amber-600 to-transparent"></div>
                     </div>
@@ -125,30 +133,31 @@ export const QiblaSection = () => {
                 )}
               </motion.div>
 
+              {/* Center Point */}
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-3.5 h-3.5 bg-amber-800 dark:bg-amber-200 rounded-full shadow z-10 border-2 border-white dark:border-stone-900"></div>
+                <div className="w-4 h-4 bg-amber-800 dark:bg-amber-200 rounded-full shadow-lg z-10 border-2 border-white dark:border-black"></div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full tabular-nums">
-              <div className="p-4 bg-amber-50/70 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-800/40 text-center">
+            <div className="grid grid-cols-2 gap-6 w-full">
+              <div className="p-6 bg-amber-50 dark:bg-amber-900/20 rounded-3xl border border-amber-100 dark:border-amber-800/50 text-center">
                 <div className="text-xs text-amber-700 dark:text-amber-400 mb-1 flex items-center justify-center gap-1">
                   <MapPin size={12} /> موقعك الحالي
                 </div>
-                <div className="font-bold text-sm text-amber-950 dark:text-amber-100 font-mono" dir="ltr">
+                <div className="font-bold text-amber-900 dark:text-amber-100">
                   {coords.lat.toFixed(4)}° N, {coords.lng.toFixed(4)}° E
                 </div>
               </div>
-              <div className="p-4 bg-amber-50/70 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-800/40 text-center">
+              <div className="p-6 bg-amber-50 dark:bg-amber-900/20 rounded-3xl border border-amber-100 dark:border-amber-800/50 text-center">
                 <div className="text-xs text-amber-700 dark:text-amber-400 mb-1">زاوية القبلة</div>
-                <div className="font-bold text-sm text-amber-950 dark:text-amber-100 font-mono">
+                <div className="font-bold text-amber-900 dark:text-amber-100">
                   {qiblaAngle?.toFixed(1)}° من الشمال
                 </div>
               </div>
             </div>
 
-            <p className="text-center text-amber-800/70 dark:text-amber-300/60 text-xs">
-              دقة البوصلة تعتمد على حساسات جهازك؛ يُنصح بتحريك الجهاز على شكل رقم (8) للمعايرة.
+            <p className="text-center text-amber-800 dark:text-amber-400/60 text-sm italic">
+              * ملاحظة: دقة البوصلة تعتمد على حساسات جهازك. يرجى تحريك الجهاز بشكل (8) لمعايرة البوصلة.
             </p>
           </>
         )}

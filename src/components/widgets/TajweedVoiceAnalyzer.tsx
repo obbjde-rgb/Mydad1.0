@@ -235,19 +235,19 @@ export const TajweedVoiceAnalyzer: React.FC<TajweedVoiceAnalyzerProps> = ({ onCl
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in" dir="rtl">
-      <div className="relative w-full max-w-2xl bg-white dark:bg-[#171412] rounded-2xl shadow-2xl border border-amber-500/20 overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-amber-500/20 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="p-5 bg-gradient-to-r from-amber-600 via-amber-700 to-emerald-700 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-white/10 backdrop-blur-md rounded-xl border border-white/20">
+            <div className="p-2.5 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
               <AudioWaveform className="w-6 h-6 text-amber-200" />
             </div>
             <div>
-              <h2 className="text-lg sm:text-xl font-bold font-serif text-amber-100">مُحلل التجويد والمخارج الصوتي (أذن مداد)</h2>
+              <h2 className="text-xl font-bold font-serif text-amber-100">مُحلل التجويد والمخارج الصوتي (أذن مداد)</h2>
               <p className="text-xs text-amber-200/80">استمع لـ «مداد»، وسجل تلاوتك للتحليل الفوري بالتجويد والمخارج الصوتية</p>
             </div>
           </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors flex items-center justify-center">
+          <button onClick={onClose} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -262,18 +262,18 @@ export const TajweedVoiceAnalyzer: React.FC<TajweedVoiceAnalyzerProps> = ({ onCl
           )}
 
           {/* Record Section */}
-          <div className="flex flex-col items-center justify-center p-8 bg-amber-500/5 dark:bg-amber-950/20 rounded-2xl border border-amber-500/15 text-center">
+          <div className="flex flex-col items-center justify-center p-8 bg-amber-500/5 dark:bg-amber-950/20 rounded-3xl border border-amber-500/15 text-center">
             <div className="relative mb-4">
               {isRecording && (
-                <div className="absolute -inset-2.5 rounded-full border-2 border-rose-500/40" />
+                <div className="absolute -inset-3 rounded-full bg-rose-500/20 animate-ping" />
               )}
               <button
                 onClick={isRecording ? stopRecording : startRecording}
                 disabled={isAnalyzing}
-                className={`relative w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-colors duration-200 ${
+                className={`relative w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 ${
                   isRecording 
-                    ? 'bg-rose-600 hover:bg-rose-700 text-white' 
-                    : 'bg-gradient-to-tr from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600 text-white'
+                    ? 'bg-rose-600 hover:bg-rose-700 text-white scale-105' 
+                    : 'bg-gradient-to-tr from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600 text-white hover:scale-105'
                 }`}
               >
                 {isRecording ? <Square className="w-8 h-8" /> : <Mic className="w-9 h-9" />}
@@ -285,7 +285,7 @@ export const TajweedVoiceAnalyzer: React.FC<TajweedVoiceAnalyzerProps> = ({ onCl
             </p>
 
             {isRecording && (
-              <span className="inline-block px-3 py-1 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 font-mono text-sm font-bold tabular-nums">
+              <span className="inline-block px-3 py-1 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 font-mono text-sm font-bold animate-pulse">
                 00:{recordingTime < 10 ? `0${recordingTime}` : recordingTime}
               </span>
             )}
@@ -334,7 +334,7 @@ export const TajweedVoiceAnalyzer: React.FC<TajweedVoiceAnalyzerProps> = ({ onCl
                 <div className="flex flex-col items-center px-4 py-2 bg-emerald-600 text-white rounded-2xl shadow-md">
                   <Award className="w-5 h-5 text-amber-300 mb-0.5" />
                   <span className="text-xs opacity-90">تقييم الأداء</span>
-                  <span className="text-xl font-bold font-mono tabular-nums">{analysisResult.score}%</span>
+                  <span className="text-xl font-bold font-mono">{analysisResult.score}%</span>
                 </div>
               </div>
 
@@ -342,12 +342,12 @@ export const TajweedVoiceAnalyzer: React.FC<TajweedVoiceAnalyzerProps> = ({ onCl
               {voiceResponseText && (
                 <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
                   <div className="p-2 rounded-xl bg-amber-600 text-white flex-shrink-0 mt-0.5">
-                    <Volume2 className={`w-5 h-5 ${isSpeakingResponse ? 'text-amber-200' : ''}`} />
+                    <Volume2 className={`w-5 h-5 ${isSpeakingResponse ? 'animate-pulse text-amber-200' : ''}`} />
                   </div>
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-bold text-amber-700 dark:text-amber-400">رد مداد الصوتي</span>
-                      {isSpeakingResponse && <span className="text-[10px] px-2 py-0.5 rounded-lg bg-amber-600/20 text-amber-700 dark:text-amber-300 font-medium">جاري التحدث</span>}
+                      {isSpeakingResponse && <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-600/20 text-amber-700 dark:text-amber-300 animate-pulse">جاري التحدث...</span>}
                     </div>
                     <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-serif">{voiceResponseText}</p>
                   </div>
@@ -363,10 +363,10 @@ export const TajweedVoiceAnalyzer: React.FC<TajweedVoiceAnalyzerProps> = ({ onCl
                   </h4>
                   <div className="space-y-2">
                     {analysisResult.tajweedRules.map((item, idx) => (
-                      <div key={idx} className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/60 dark:border-zinc-700/50 flex items-center justify-between gap-2 text-xs">
+                      <div key={idx} className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/60 dark:border-zinc-700/50 flex items-center justify-between text-xs">
                         <span className="font-bold text-zinc-800 dark:text-zinc-200">{item.rule}</span>
                         <span className="text-zinc-600 dark:text-zinc-400">{item.notes}</span>
-                        <span className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold shrink-0 ${
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
                           item.type === 'صحيح' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
                         }`}>
                           {item.type}
@@ -379,7 +379,7 @@ export const TajweedVoiceAnalyzer: React.FC<TajweedVoiceAnalyzerProps> = ({ onCl
 
               {/* Makharij & Recommendations */}
               <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-zinc-700/40 text-xs space-y-2">
-                <span className="font-bold text-amber-800 dark:text-amber-300 block mb-1">ملاحظات المخارج والتوصيات:</span>
+                <span className="font-bold text-amber-800 dark:text-amber-300 block mb-1">ملاحظات المخاريج والتوصيات:</span>
                 <p className="text-zinc-700 dark:text-zinc-300 leading-relaxed font-serif">{analysisResult.recommendations}</p>
               </div>
 

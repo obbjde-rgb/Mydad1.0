@@ -248,7 +248,7 @@ async function startServer() {
     try {
       const secret = process.env.CHATBOT_IDENTITY_SECRET;
       if (!secret) {
-        return res.json({ token: null, configured: false });
+        return res.status(400).json({ error: "CHATBOT_IDENTITY_SECRET environment variable is missing" });
       }
 
       const userId = (req.query.user_id as string) || (req.query.userId as string) || "user_" + Math.random().toString(36).substring(2, 11);
@@ -1188,6 +1188,7 @@ ${systemInstruction || ''}`;
     ].filter(Boolean)));
 
     let session: any = null;
+    let connectedModel = "";
 
     for (const modelName of candidateModels) {
       try {
@@ -1254,7 +1255,7 @@ ${systemInstruction || ''}`;
           }
         });
 
-        console.log(`[WS Live] Connected using model: ${modelName}`);
+        connectedModel = modelName;
         clientWs.send(JSON.stringify({ type: 'connected', model: modelName }));
         break;
       } catch (err: any) {

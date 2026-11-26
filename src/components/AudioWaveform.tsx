@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Volume2 } from 'lucide-react';
+import { Volume2, Mic } from 'lucide-react';
 
 interface AudioWaveformProps {
   isListening: boolean;
@@ -152,8 +152,8 @@ export const AudioWaveform: React.FC<AudioWaveformProps> = ({
       </div>
 
       {/* Mic DB indicator */}
-      <div className="flex items-center gap-1 text-xs font-mono tabular-nums text-rose-700 dark:text-rose-300 bg-rose-500/10 px-2 py-0.5 rounded-lg shrink-0">
-        <Volume2 size={12} />
+      <div className="flex items-center gap-1 text-xs font-mono text-rose-700 dark:text-rose-300 bg-rose-500/10 px-2 py-0.5 rounded-lg shrink-0">
+        <Volume2 size={12} className="animate-pulse" />
         <span>{micLevel}%</span>
       </div>
     </div>

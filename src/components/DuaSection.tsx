@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Volume2, Square, Heart, Search, Copy, Share2, Sparkles, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
+import { Volume2, Square, Heart, Search, Clock, Copy, Share2, Sparkles, Loader2 } from 'lucide-react';
 import { ReadAloud } from './ReadAloud';
 import { generateDua } from '../services/aiService';
 import { safeLocalStorageGet, safeLocalStorageSet } from '../lib/utils';
@@ -204,92 +205,95 @@ export const DuaSection = ({ speakText, stopSpeaking, isSpeaking }: { speakText:
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/95 dark:bg-[#171412]/95 p-5 sm:p-6 rounded-2xl border border-amber-200/50 dark:border-amber-900/40 shadow-sm">
-        <div className="text-right">
-          <h2 className="text-2xl sm:text-3xl font-bold text-amber-950 dark:text-amber-50 font-kufi">الأدعية المأثورة</h2>
-          <p className="text-xs sm:text-sm text-amber-800/70 dark:text-amber-300/70 mt-1">من صحيح السنة النبوية والمصادر الموثوقة</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <button
+    <div className="space-y-12">
+      <div className="text-center space-y-6 relative">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-amber-400/10 dark:bg-amber-600/10 rounded-full blur-3xl pointer-events-none"></div>
+        <h2 className="text-6xl font-black text-amber-950 dark:text-amber-50 drop-shadow-sm relative z-10">الأدعية المأثورة</h2>
+        <p className="text-2xl text-amber-800/80 dark:text-amber-400/60 font-medium relative z-10">من صحيح السنة النبوية والمصادر الموثوقة</p>
+        <div className="flex flex-wrap justify-center gap-4 relative z-10">
+          <button 
             onClick={fetchDuaOfTheDay}
             disabled={isGeneratingDua}
-            className="h-10 inline-flex items-center gap-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors active:scale-95 font-semibold text-xs sm:text-sm disabled:opacity-50 whitespace-nowrap"
+            className="inline-flex items-center gap-3 px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl border border-emerald-500 shadow-lg shadow-emerald-900/20 transition-all active:scale-95 font-bold text-lg disabled:opacity-50"
           >
-            {isGeneratingDua ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
-            <span>دعاء اليوم</span>
+            {isGeneratingDua ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={20} />}
+            دعاء اليوم
           </button>
-          <button
+          <button 
             onClick={handleRandomDua}
-            className="h-10 inline-flex items-center gap-2 px-4 bg-amber-700 hover:bg-amber-800 text-white rounded-xl transition-colors active:scale-95 font-semibold text-xs sm:text-sm whitespace-nowrap"
+            className="inline-flex items-center gap-3 px-8 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-2xl border border-amber-500 shadow-lg shadow-amber-900/20 transition-all active:scale-95 font-bold text-lg"
           >
-            <Sparkles size={16} />
-            <span>دعاء عشوائي</span>
+            <Sparkles size={20} />
+            دعاء عشوائي
           </button>
         </div>
       </div>
 
       <div className="relative max-w-2xl mx-auto">
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-amber-600/70 dark:text-amber-400/70 pointer-events-none">
-          <Search size={18} />
+        <div className="absolute right-6 top-1/2 -translate-y-1/2 text-amber-600/60 dark:text-amber-400/60 pointer-events-none">
+          <Search size={24} />
         </div>
-        <input
-          type="text"
-          placeholder="ابحث عن دعاء بالاسم أو المحتوى..."
+        <input 
+          type="text" 
+          placeholder="ابحث عن دعاء بالاسم أو المحتوى..." 
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pr-11 pl-4 py-3 bg-white/95 dark:bg-[#171412]/95 rounded-xl shadow-sm border border-amber-200/60 dark:border-amber-900/50 text-base text-amber-950 dark:text-amber-50 font-medium text-right focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 outline-none transition-colors placeholder:text-amber-900/40 dark:placeholder:text-amber-100/35"
+          className="w-full pr-16 pl-6 py-5 bg-white/90 dark:bg-[#1c1917]/90 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.2)] border border-amber-200/60 dark:border-white/10 text-2xl text-amber-950 dark:text-amber-50 font-bold text-right focus:ring-4 focus:ring-amber-500/20 focus:border-amber-400 dark:focus:border-amber-600 outline-none transition-all duration-500 placeholder:text-amber-900/30 dark:placeholder:text-amber-100/30"
           dir="rtl"
           lang="ar"
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
-        {filteredDuas.map((dua) => (
-          <div
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {filteredDuas.map((dua, index) => (
+          <motion.div
             key={dua.id}
-            className="bg-white/95 dark:bg-[#171412]/95 p-5 sm:p-6 rounded-2xl shadow-sm border border-amber-200/50 dark:border-amber-900/40 flex flex-col justify-between gap-4 transition-colors hover:border-amber-300/70 dark:hover:border-amber-800/60"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05, duration: 0.5 }}
+            className="bg-white/90 dark:bg-[#1c1917]/90 backdrop-blur-xl p-10 rounded-[3rem] shadow-xl hover:shadow-2xl border border-amber-200/60 dark:border-white/10 relative overflow-hidden group transition-all duration-500"
           >
-            <div className="space-y-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1 min-w-0">
-                  <div className="flex items-center gap-1.5 text-[11px] font-medium text-amber-700/80 dark:text-amber-400/80">
-                    <span>{dua.category}</span>
-                    {dua.category === timeCategory && (
-                      <>
-                        <span aria-hidden="true">·</span>
-                        <span className="text-emerald-700 dark:text-emerald-400 font-semibold">مناسب للوقت الحالي</span>
-                      </>
-                    )}
-                  </div>
-                  <h3 className="text-lg sm:text-xl font-bold text-amber-950 dark:text-amber-50 leading-snug">{dua.title}</h3>
-                </div>
+            <div className="absolute -left-12 -bottom-12 text-[12rem] text-amber-900/5 dark:text-amber-100/5 rotate-12 pointer-events-none font-quran group-hover:rotate-0 transition-transform duration-700">🤲</div>
+            
+            <div className="absolute top-0 right-0 p-6 flex gap-3 z-20">
+              {dua.category === timeCategory && (
+                <span className="px-4 py-1.5 bg-emerald-100/80 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 rounded-full text-xs font-black animate-pulse border border-emerald-200/50 dark:border-emerald-700/30 shadow-sm">
+                  مقترح
+                </span>
+              )}
+              <span className="px-5 py-1.5 bg-amber-100/80 dark:bg-amber-900/40 text-amber-900 dark:text-amber-100 rounded-full text-sm font-bold border border-amber-200/50 dark:border-amber-700/30 shadow-sm">
+                {dua.category}
+              </span>
+            </div>
 
-                <div className="flex items-center gap-1 shrink-0">
-                  <ReadAloud
-                    text={dua.arabic}
-                    buttonClassName="w-8 h-8 flex items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800/50 transition-colors"
+            <div className="mt-8 space-y-8 relative z-10">
+              <div className="flex justify-between items-start gap-4">
+                <h3 className="text-3xl font-bold text-amber-950 dark:text-amber-50 leading-tight">{dua.title}</h3>
+                <div className="flex gap-2 shrink-0">
+                  <ReadAloud 
+                    text={dua.arabic} 
+                    buttonClassName="p-3 rounded-2xl bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800 transition-all hover:scale-110 shadow-sm"
                   />
-                  <button
+                  <button 
                     onClick={() => navigator.clipboard.writeText(dua.arabic)}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800/50 transition-colors"
+                    className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800 transition-all hover:scale-110 shadow-sm"
                     title="نسخ الدعاء"
                   >
-                    <Copy size={15} />
+                    <Copy size={20} />
                   </button>
-                  {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
-                    <button
+                  {navigator.share && (
+                    <button 
                       onClick={() => navigator.share({
                         title: dua.title,
                         text: `${dua.arabic}\n\n${dua.translation}`,
                       }).catch(console.error)}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800/50 transition-colors"
+                      className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800 transition-all hover:scale-110 shadow-sm"
                       title="مشاركة الدعاء"
                     >
-                      <Share2 size={15} />
+                      <Share2 size={20} />
                     </button>
                   )}
-                  <button
+                  <button 
                     onClick={() => {
                       if (isSpeaking && activeDua === dua.id) {
                         stopSpeaking();
@@ -306,41 +310,42 @@ export const DuaSection = ({ speakText, stopSpeaking, isSpeaking }: { speakText:
                         }));
                       }
                     }}
-                    className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${isSpeaking && activeDua === dua.id ? 'bg-amber-700 text-white' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800/50'}`}
-                    title={isSpeaking && activeDua === dua.id ? 'إيقاف' : 'استماع'}
+                    className={`p-3 rounded-2xl transition-all hover:scale-110 shadow-sm ${isSpeaking && activeDua === dua.id ? 'bg-amber-700 text-white animate-pulse' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800'}`}
                   >
-                    {isSpeaking && activeDua === dua.id ? <Square size={15} /> : <Volume2 size={15} />}
+                    {isSpeaking && activeDua === dua.id ? <Square size={20} /> : <Volume2 size={20} />}
                   </button>
                 </div>
               </div>
 
-              <p className="text-2xl sm:text-3xl font-quran leading-[2.1] text-right text-amber-950 dark:text-amber-50" dir="rtl">
+              <p className="text-4xl font-quran leading-[2.2] text-right text-amber-950 dark:text-amber-50 drop-shadow-sm" dir="rtl">
                 {dua.arabic}
               </p>
-            </div>
 
-            <div className="pt-4 border-t border-amber-100/80 dark:border-amber-900/30 space-y-3">
-              <div className="flex items-start gap-3">
-                <p className="text-sm sm:text-base text-amber-900/75 dark:text-amber-200/70 italic leading-relaxed flex-1 text-left" dir="ltr">
-                  {dua.translation}
-                </p>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    onClick={() => navigator.clipboard.writeText(dua.translation)}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-amber-50/80 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 hover:bg-amber-100 transition-colors"
-                    title="نسخ الترجمة"
-                  >
-                    <Copy size={14} />
-                  </button>
-                  <ReadAloud text={dua.translation} lang="en-US" buttonClassName="w-7 h-7 flex items-center justify-center rounded-lg bg-amber-50/80 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 hover:bg-amber-100 transition-colors" />
+              <div className="pt-8 border-t border-amber-100/60 dark:border-white/5">
+                <div className="flex items-start gap-6">
+                  <p className="text-xl text-amber-900/70 dark:text-amber-200/60 italic leading-relaxed flex-1 text-left" dir="ltr">
+                    {dua.translation}
+                  </p>
+                  <div className="flex flex-col gap-3 shrink-0">
+                    <button 
+                      onClick={() => navigator.clipboard.writeText(dua.translation)}
+                      className="p-3 rounded-2xl bg-amber-50/50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800 transition-all shadow-sm"
+                      title="نسخ الترجمة"
+                    >
+                      <Copy size={18} />
+                    </button>
+                    <ReadAloud text={dua.translation} lang="en-US" buttonClassName="p-3 rounded-2xl bg-amber-50/50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800 transition-all shadow-sm" />
+                  </div>
+                </div>
+                <div className="mt-8 flex items-center gap-3 text-base text-amber-800/60 dark:text-amber-400/40 font-medium">
+                  <div className="p-1.5 bg-amber-100/50 dark:bg-amber-900/30 rounded-lg">
+                    <Heart size={16} className="fill-current" />
+                  </div>
+                  <span>المصدر: {dua.source}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 text-xs text-amber-800/65 dark:text-amber-300/60 font-medium">
-                <Heart size={13} className="text-amber-600 dark:text-amber-400 shrink-0" />
-                <span>المصدر: {dua.source}</span>
-              </div>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
     </div>

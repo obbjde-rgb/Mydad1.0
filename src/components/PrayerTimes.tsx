@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Coordinates, CalculationMethod, PrayerTimes, SunnahTimes } from 'adhan';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale';
-import { Clock, MapPin, ChevronDown, ChevronUp, Globe, Share2, Copy } from 'lucide-react';
+import { Clock, MapPin, ChevronDown, ChevronUp, Settings, Globe, Share2, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ReadAloud } from './ReadAloud';
 
@@ -44,11 +44,11 @@ export const PrayerTimesCard = () => {
   const [nextPrayer, setNextPrayer] = useState<{ name: string; time: Date } | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [showCityMenu, setShowCityMenu] = useState(false);
-  const [locationFallback, setLocationFallback] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const detectLocation = () => {
-    setLocationFallback(false);
-    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+    setError(null);
+    if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setCoords({
@@ -58,13 +58,14 @@ export const PrayerTimesCard = () => {
           });
           setShowCityMenu(false);
         },
-        () => {
-          setLocationFallback(true);
+        (err) => {
+          console.warn('Geolocation error:', err);
+          setError('يرجى تفعيل الموقع للحصول على مواقيت الصلاة الدقيقة. تم الضبط التلقائي على الدار البيضاء.');
           setCoords({ lat: 33.5731, lng: -7.5898, name: 'الدار البيضاء' });
         }
       );
     } else {
-      setLocationFallback(true);
+      setError('المتصفح لا يدعم تحديد الموقع. تم الضبط التلقائي على الدار البيضاء.');
       setCoords({ lat: 33.5731, lng: -7.5898, name: 'الدار البيضاء' });
     }
   };
@@ -86,32 +87,29 @@ export const PrayerTimesCard = () => {
     setSunnahTimes(st);
 
     const next = pt.nextPrayer();
-    let activeNext: { name: string; time: Date };
     if (next !== 'none') {
-      activeNext = {
+      setNextPrayer({
         name: next,
         time: pt.timeForPrayer(next)!,
-      };
+      });
     } else {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       const ptTomorrow = new PrayerTimes(coordinates, tomorrow, params);
-      activeNext = {
+      setNextPrayer({
         name: 'fajr',
         time: ptTomorrow.fajr,
-      };
+      });
     }
-    setNextPrayer(activeNext);
 
     const interval = setInterval(() => {
       const now = new Date();
-      if (now > activeNext.time) {
+      if (nextPrayer && now > nextPrayer.time) {
         const ptNew = new PrayerTimes(coordinates, now, params);
         setPrayerTimes(ptNew);
         const nextNew = ptNew.nextPrayer();
         if (nextNew !== 'none') {
-          activeNext = { name: nextNew, time: ptNew.timeForPrayer(nextNew)! };
-          setNextPrayer(activeNext);
+          setNextPrayer({ name: nextNew, time: ptNew.timeForPrayer(nextNew)! });
         }
       }
     }, 60000);
@@ -130,14 +128,15 @@ export const PrayerTimesCard = () => {
     { id: 'isha', time: prayerTimes.isha },
   ];
 
-  const shareSummary = `الصلاة القادمة هي صلاة ${PRAYER_NAMES_AR[nextPrayer.name]} في تمام الساعة ${format(nextPrayer.time, 'hh:mm a')} بتوقيت ${coords?.name || 'موقعي الحالي'}`;
-
   return (
-    <div className="w-full h-full relative">
-      <div className="h-full bg-white/95 dark:bg-[#171412]/95 rounded-2xl shadow-sm border border-amber-200/50 dark:border-amber-900/40 overflow-hidden flex flex-col justify-between">
-        <div className="flex items-center justify-between gap-2 p-5">
-          <div
-            className="flex-1 flex items-center justify-between gap-3 cursor-pointer min-w-0"
+    <div className="w-full max-w-md mx-auto mb-8 relative">
+      <motion.div 
+        layout
+        className="bg-white dark:bg-[#1c1917] rounded-3xl shadow-xl border border-amber-200 dark:border-amber-900 overflow-hidden"
+      >
+        <div className="flex items-center">
+          <div 
+            className="flex-1 p-4 flex items-center justify-between cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
             onClick={() => {
               const newExpanded = !isExpanded;
               setIsExpanded(newExpanded);
@@ -152,106 +151,94 @@ export const PrayerTimesCard = () => {
               }
             }}
           >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 bg-amber-100/80 dark:bg-amber-900/40 rounded-xl text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
-                <Clock size={18} />
+            <div className="flex items-center gap-3">
+              <div className="bg-amber-100 dark:bg-amber-900 p-2 rounded-xl text-amber-700 dark:text-amber-300">
+                <Clock size={20} />
               </div>
-              <div className="text-right min-w-0">
-                <p className="text-xs text-amber-800/80 dark:text-amber-400/90 font-semibold truncate">
-                  {PRAYER_NAMES_AR[nextPrayer.name]}
-                  <span aria-hidden="true"> · </span>
-                  <span>{coords?.name}</span>
+              <div className="text-right">
+                <p className="text-xs text-amber-800 dark:text-amber-500 font-bold">
+                  الصلاة القادمة: {PRAYER_NAMES_AR[nextPrayer.name]} 
+                  <span className="mr-2 text-[10px] opacity-80">({coords?.name})</span>
                 </p>
-                <div className="flex items-baseline gap-2 mt-0.5 tabular-nums">
-                  <span className="text-xl font-bold text-amber-950 dark:text-amber-50 font-mono" dir="ltr">
-                    {format(nextPrayer.time, 'hh:mm')} {format(nextPrayer.time, 'a') === 'AM' ? 'ص' : 'م'}
+                <div className="text-lg font-bold text-amber-900 dark:text-amber-100 flex items-center gap-2" dir="ltr">
+                  <span>{format(nextPrayer.time, 'hh:mm')}</span>
+                  <span>{format(nextPrayer.time, 'a') === 'AM' ? 'ص' : 'م'}</span>
+                  <span className="text-xs font-normal opacity-70 mr-2" dir="rtl">
+                    (بعد {formatDistanceToNow(nextPrayer.time, { locale: ar })})
                   </span>
-                  <span className="text-xs text-amber-700/70 dark:text-amber-300/70 truncate">
-                    بعد {formatDistanceToNow(nextPrayer.time, { locale: ar })}
-                  </span>
+                  <ReadAloud 
+                    text={`الصلاة القادمة هي صلاة ${PRAYER_NAMES_AR[nextPrayer.name]} في تمام الساعة ${format(nextPrayer.time, 'hh:mm a')}`} 
+                    className="p-1"
+                  />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigator.clipboard.writeText(`الصلاة القادمة هي صلاة ${PRAYER_NAMES_AR[nextPrayer.name]} في تمام الساعة ${format(nextPrayer.time, 'hh:mm a')} بتوقيت ${coords?.name || 'موقعي الحالي'}`);
+                    }}
+                    className="p-1 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-full transition-colors"
+                    title="نسخ"
+                  >
+                    <Copy size={16} />
+                  </button>
+                  {navigator.share && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.share({
+                          title: 'مواقيت الصلاة',
+                          text: `الصلاة القادمة هي صلاة ${PRAYER_NAMES_AR[nextPrayer.name]} في تمام الساعة ${format(nextPrayer.time, 'hh:mm a')} بتوقيت ${coords?.name || 'موقعي الحالي'}`,
+                        }).catch(console.error);
+                      }}
+                      className="p-1 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-full transition-colors"
+                      title="مشاركة"
+                    >
+                      <Share2 size={16} />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
-
-            <span className="text-amber-700 dark:text-amber-400 shrink-0">
-              {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-            </span>
+            <div className="flex items-center gap-2">
+              {error && <MapPin size={16} className="text-red-500 animate-pulse" />}
+              {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </div>
           </div>
-
-          <div className="flex items-center gap-1 shrink-0 border-r border-amber-100 dark:border-amber-900/30 pr-2">
-            <ReadAloud
-              text={shareSummary}
-              buttonClassName="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-300 transition-colors"
-            />
-            <button
-              onClick={() => navigator.clipboard.writeText(shareSummary)}
-              className="w-8 h-8 flex items-center justify-center text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-lg transition-colors"
-              title="نسخ الموعد"
-            >
-              <Copy size={15} />
-            </button>
-            {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
-              <button
-                onClick={() => {
-                  navigator.share({ title: 'مواقيت الصلاة', text: shareSummary }).catch(console.error);
-                }}
-                className="hidden sm:flex w-8 h-8 items-center justify-center text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-lg transition-colors"
-                title="مشاركة"
-              >
-                <Share2 size={15} />
-              </button>
-            )}
-            <button
-              onClick={() => setShowCityMenu(!showCityMenu)}
-              className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${showCityMenu ? 'bg-amber-600 text-white' : 'text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40'}`}
-              title={locationFallback ? 'اختيار المدينة (تم استخدام المدينة الافتراضية)' : 'اختيار المدينة'}
-            >
-              <Globe size={15} />
-            </button>
-          </div>
+          
+          <button 
+            onClick={() => setShowCityMenu(!showCityMenu)}
+            className="p-4 border-r border-amber-100 dark:border-amber-900 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+            title="اختيار المدينة"
+          >
+            <Globe size={20} />
+          </button>
         </div>
-
-        {/* Always-visible slim next-prayers summary strip */}
-        {!isExpanded && !showCityMenu && (
-          <div className="px-5 pb-3.5 pt-2.5 border-t border-amber-100/70 dark:border-amber-900/30 flex items-center justify-between gap-2 overflow-x-auto hide-scrollbar text-[11px] tabular-nums">
-            {prayers.map((p) => (
-              <div
-                key={p.id}
-                className={`flex items-center gap-1 whitespace-nowrap shrink-0 ${nextPrayer.name === p.id ? 'text-amber-700 dark:text-amber-300 font-bold' : 'text-amber-900/65 dark:text-amber-200/60'}`}
-              >
-                <span>{PRAYER_NAMES_AR[p.id]}</span>
-                <span className="font-mono" dir="ltr">{format(p.time, 'hh:mm')}</span>
-              </div>
-            ))}
-          </div>
-        )}
 
         <AnimatePresence>
           {showCityMenu && (
-            <motion.div
+            <motion.div 
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="bg-amber-50/60 dark:bg-amber-950/20 border-t border-amber-100 dark:border-amber-900/30 overflow-hidden"
+              className="bg-amber-50 dark:bg-amber-900/10 border-t border-amber-100 dark:border-amber-900 overflow-hidden"
             >
-              <div className="p-3.5 max-h-56 overflow-y-auto grid grid-cols-2 gap-1.5 custom-scrollbar">
-                <button
+              <div className="p-4 max-h-60 overflow-y-auto grid grid-cols-2 gap-2">
+                <button 
                   onClick={detectLocation}
-                  className="col-span-2 py-2 px-3 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 mb-1 transition-colors"
+                  className="col-span-2 p-3 rounded-xl bg-amber-700 text-white font-bold flex items-center justify-center gap-2 mb-2"
                 >
-                  <MapPin size={14} /> تحديد تلقائي للموقع
+                  <MapPin size={16} /> تحديد تلقائي للموقع
                 </button>
                 {MAJOR_CITIES.map((city) => (
-                  <button
+                  <button 
                     key={city.name}
                     onClick={() => {
                       setCoords({ lat: city.lat, lng: city.lng, name: city.name });
                       setShowCityMenu(false);
                     }}
-                    className={`p-2 rounded-xl text-xs text-right border transition-colors ${coords?.name === city.name ? 'border-amber-600 bg-amber-100 dark:bg-amber-900/40 font-bold text-amber-950 dark:text-amber-50' : 'border-amber-200/60 dark:border-amber-800/40 hover:bg-amber-100/70 dark:hover:bg-amber-900/20 text-amber-900 dark:text-amber-100'}`}
+                    className={`p-2 rounded-xl text-sm text-right border transition-all ${coords?.name === city.name ? 'border-amber-600 bg-amber-100 dark:bg-amber-900/40 font-bold' : 'border-amber-200 dark:border-amber-800 hover:bg-amber-100'}`}
                   >
-                    <div className="font-semibold">{city.name}</div>
-                    <div className="text-[10px] opacity-65">{city.country}</div>
+                    <div className="text-amber-900 dark:text-amber-100">{city.name}</div>
+                    <div className="text-[10px] opacity-80">{city.country}</div>
                   </button>
                 ))}
               </div>
@@ -261,39 +248,40 @@ export const PrayerTimesCard = () => {
 
         <AnimatePresence>
           {isExpanded && (
-            <motion.div
+            <motion.div 
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="border-t border-amber-100 dark:border-amber-900/30 overflow-hidden"
+              className="border-t border-amber-100 dark:border-amber-900"
             >
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 p-4 tabular-nums">
+              <div className="grid grid-cols-3 gap-2 p-4">
                 {prayers.map((p) => (
-                  <div
-                    key={p.id}
-                    className={`p-2.5 rounded-xl text-center transition-colors ${nextPrayer.name === p.id ? 'bg-amber-700 text-white shadow-sm' : 'bg-amber-50/70 dark:bg-amber-900/25 text-amber-950 dark:text-amber-100'}`}
+                  <div 
+                    key={p.id} 
+                    className={`p-3 rounded-2xl text-center transition-all ${nextPrayer.name === p.id ? 'bg-amber-700 text-white shadow-lg scale-105' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100'}`}
                   >
-                    <p className="text-[11px] opacity-75 mb-0.5">{PRAYER_NAMES_AR[p.id]}</p>
-                    <p className="text-xs font-bold font-mono" dir="ltr">
-                      {format(p.time, 'hh:mm')} {format(p.time, 'a') === 'AM' ? 'ص' : 'م'}
+                    <p className="text-xs opacity-70 mb-1">{PRAYER_NAMES_AR[p.id]}</p>
+                    <p className="font-bold flex items-center justify-center gap-1" dir="ltr">
+                      <span>{format(p.time, 'hh:mm')}</span>
+                      <span className="text-[10px]">{format(p.time, 'a') === 'AM' ? 'ص' : 'م'}</span>
                     </p>
                   </div>
                 ))}
               </div>
               {sunnahTimes && (
-                <div className="px-4 pb-3.5 flex justify-between text-[11px] text-amber-800/75 dark:text-amber-300/75 font-medium tabular-nums">
-                  <span>
-                    {PRAYER_NAMES_AR.lastthird}: <span className="font-mono" dir="ltr">{format(sunnahTimes.lastThirdOfTheNight, 'hh:mm')} {format(sunnahTimes.lastThirdOfTheNight, 'a') === 'AM' ? 'ص' : 'م'}</span>
+                <div className="px-4 pb-4 flex justify-between text-[10px] text-amber-800 dark:text-amber-500 font-bold opacity-80">
+                  <span className="flex items-center gap-1">
+                    {PRAYER_NAMES_AR.lastthird}: <span dir="ltr">{format(sunnahTimes.lastThirdOfTheNight, 'hh:mm')} {format(sunnahTimes.lastThirdOfTheNight, 'a') === 'AM' ? 'ص' : 'م'}</span>
                   </span>
-                  <span>
-                    {PRAYER_NAMES_AR.midnight}: <span className="font-mono" dir="ltr">{format(sunnahTimes.middleOfTheNight, 'hh:mm')} {format(sunnahTimes.middleOfTheNight, 'a') === 'AM' ? 'ص' : 'م'}</span>
+                  <span className="flex items-center gap-1">
+                    {PRAYER_NAMES_AR.midnight}: <span dir="ltr">{format(sunnahTimes.middleOfTheNight, 'hh:mm')} {format(sunnahTimes.middleOfTheNight, 'a') === 'AM' ? 'ص' : 'م'}</span>
                   </span>
                 </div>
               )}
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
     </div>
   );
 };

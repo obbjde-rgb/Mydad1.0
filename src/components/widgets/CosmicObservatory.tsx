@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Sparkles, Activity, Telescope, Radio, Globe, Compass, Cpu } from 'lucide-react';
+import { X, Sparkles, Activity, Telescope, Radio, Globe, Compass, ArrowUpRight, Award, ShieldAlert, Cpu } from 'lucide-react';
 
 interface ObservatoryStream {
   source: string;
@@ -79,20 +79,20 @@ export const CosmicObservatory: React.FC<{ onClose: () => void; onSendToChat?: (
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in" dir="rtl">
-      <div className="relative w-full max-w-4xl bg-zinc-950 border border-amber-500/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-4xl bg-zinc-950 border border-amber-500/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Header */}
         <div className="p-5 bg-gradient-to-r from-zinc-900 via-amber-950 to-zinc-950 border-b border-amber-500/20 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-amber-500/20 rounded-xl border border-amber-400/30">
-              <Telescope className="w-6 h-6 text-amber-400" />
+            <div className="p-2.5 bg-amber-500/20 rounded-2xl border border-amber-400/30">
+              <Telescope className="w-6 h-6 text-amber-400 animate-pulse" />
             </div>
             <div>
               <h2 className="text-lg font-bold font-serif text-amber-100">لوحة البث الكوني الحي ومراصد الآفاق والذرة</h2>
               <p className="text-xs text-amber-200/70">تكامل حي ومباشر يربط المعطيات الفيزيائية للمجرات والذرات ببراهين التوحيد والتسبيح</p>
             </div>
           </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-colors flex items-center justify-center">
+          <button onClick={onClose} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -100,12 +100,12 @@ export const CosmicObservatory: React.FC<{ onClose: () => void; onSendToChat?: (
         {/* Matter Tasbeeh Global Indicator */}
         <div className="bg-amber-500/10 border-b border-amber-500/20 px-5 py-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Activity className="w-4 h-4 text-emerald-400" />
+            <Activity className="w-4 h-4 text-emerald-400 animate-bounce" />
             <span className="text-xs text-amber-100 font-kufi">إجمالي ترددات تسبيح المادة الكونية المرصودة حالياً:</span>
           </div>
           <div className="flex items-center gap-2 bg-black/40 px-4 py-1.5 rounded-xl border border-amber-500/30">
-            <span className="text-sm font-mono text-emerald-400 font-bold tabular-nums">{matterTasbeehCount.toLocaleString()}</span>
-            <span className="text-[11px] text-zinc-400 font-serif">تسبيحة / ثانية</span>
+            <span className="text-sm font-mono text-emerald-400 font-bold tracking-widest">{matterTasbeehCount.toLocaleString()}</span>
+            <span className="text-[10px] text-zinc-400 font-serif">تسبيحة / ثانية</span>
           </div>
         </div>
 
@@ -138,14 +138,14 @@ export const CosmicObservatory: React.FC<{ onClose: () => void; onSendToChat?: (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             {/* Live Visual Monitor */}
-            <div className="lg:col-span-1 bg-black/50 border border-zinc-800 rounded-2xl p-5 flex flex-col items-center justify-between relative overflow-hidden min-h-[250px]">
+            <div className="lg:col-span-1 bg-black/50 border border-zinc-800 rounded-3xl p-5 flex flex-col items-center justify-between relative overflow-hidden min-h-[250px]">
               <div className="absolute inset-0 pointer-events-none opacity-30">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-500/20 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-500/20 via-transparent to-transparent animate-pulse" />
               </div>
               
               <div className="w-full flex items-center justify-between pb-3 border-b border-zinc-800 z-10">
-                <span className="text-[11px] font-bold text-amber-400 font-mono">مراقب الموجات والتردد</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="text-[10px] font-bold text-amber-400 font-mono uppercase tracking-wider">مراقب الموجات والتردد</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
               </div>
 
               {/* Animated visual telemetry */}
@@ -163,7 +163,7 @@ export const CosmicObservatory: React.FC<{ onClose: () => void; onSendToChat?: (
                 </div>
 
                 <div className="text-center">
-                  <span className="text-[11px] text-zinc-400 block">المعلم الفيزيائي النشط:</span>
+                  <span className="text-[10px] text-zinc-500 block">المعلم الفيزيائي النشط:</span>
                   <span className="text-xs font-bold text-amber-200">{currentData.metric}</span>
                 </div>
               </div>
@@ -173,7 +173,7 @@ export const CosmicObservatory: React.FC<{ onClose: () => void; onSendToChat?: (
                 disabled={isSyncing}
                 className="w-full py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 hover:bg-zinc-800 transition-colors z-10 font-bold"
               >
-                {isSyncing ? 'جاري المزامنة مع المراصد...' : 'مزامنة البث الآن'}
+                {isSyncing ? 'جاري المزامنة مع المراصد...' : '🔄 مزامنة البث الآن'}
               </button>
             </div>
 
@@ -181,30 +181,30 @@ export const CosmicObservatory: React.FC<{ onClose: () => void; onSendToChat?: (
             <div className="lg:col-span-2 space-y-5">
               
               {/* Telemetry Display Card */}
-              <div className="bg-stone-900/60 border border-zinc-800 rounded-2xl p-5 space-y-4">
+              <div className="bg-stone-900/60 border border-zinc-800 rounded-3xl p-5 space-y-4">
                 <div>
-                  <span className="text-[11px] font-bold text-amber-400 font-mono block">{currentData.source}</span>
+                  <span className="text-[10px] font-bold text-amber-400 font-mono uppercase block">{currentData.source}</span>
                   <h3 className="text-sm font-bold text-zinc-300 mt-0.5">{currentData.targetName}</h3>
                 </div>
 
-                <div className="p-4 bg-black/60 rounded-xl border border-zinc-800/80 flex items-center justify-between gap-3">
+                <div className="p-4 bg-black/60 rounded-2xl border border-zinc-800/80 flex items-center justify-between">
                   <div>
-                    <span className="text-[11px] text-zinc-400 block font-serif">البيانات الرقمية الحية:</span>
-                    <span className="text-base font-mono text-amber-300 font-bold tabular-nums">{currentData.value}</span>
+                    <span className="text-[10px] text-zinc-500 block font-serif">البيانات الرقمية الحية:</span>
+                    <span className="text-base font-mono text-amber-300 font-bold tracking-wide">{currentData.value}</span>
                   </div>
-                  <Compass className="w-6 h-6 text-amber-500 shrink-0" />
+                  <Compass className="w-6 h-6 text-amber-500 animate-spin-slow shrink-0" />
                 </div>
               </div>
 
               {/* Sacred Text Mapping Card */}
-              <div className="bg-amber-600/5 border border-amber-500/20 rounded-2xl p-5 space-y-3">
+              <div className="bg-amber-600/5 border border-amber-500/20 rounded-3xl p-5 space-y-3">
                 <span className="text-xs font-bold text-amber-400 block font-kufi">الدليل الإعجازي والمطابقة النصية:</span>
                 
-                <div className="p-4 bg-black/40 rounded-xl border border-amber-500/10 text-center">
+                <div className="p-4 bg-black/40 rounded-2xl border border-amber-500/10 text-center">
                   <p className="text-base font-serif font-extrabold text-amber-100 leading-relaxed">
                     {currentData.verseMapping}
                   </p>
-                  <span className="inline-block mt-2 px-2.5 py-0.5 rounded-lg bg-amber-500/10 text-amber-300 text-[11px] font-bold">
+                  <span className="inline-block mt-2 px-2.5 py-0.5 rounded bg-amber-500/10 text-amber-300 text-[10px] font-bold">
                     {currentData.verseRef}
                   </span>
                 </div>

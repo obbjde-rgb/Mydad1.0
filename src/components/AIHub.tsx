@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef, useImperativeHandle, useMemo, memo } from 'react';
+import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, Trash2, History, Sparkles, X, ChevronLeft, MessageSquare, Book, Lightbulb, ShieldAlert, RotateCcw, Copy, Volume2, Trash, StopCircle, RefreshCw, Share2, AudioLines, Image as ImageIcon, Palette, MonitorPlay, Cpu, ArrowDown, Heart, Users, Zap, Leaf, Mic, Brain, BookOpen, Download, Square as SquareIcon, Loader2, Terminal, Settings2, MoreVertical, Compass } from 'lucide-react';
-import { ChatMarkdownRenderer } from './chat/ChatMarkdownRenderer';
-import { callAIWithFailover, AIProviderKey, AI_PROVIDERS, AIMessage, generateRecitationStream, callAIStream, getDynamicModelsList, fetchAndUpdateModels, fetchAllProvidersModels, startDeepResearch, getDeepResearchStatus, generateContextualSuggestions } from '../services/aiService';
+import { Send, Trash2, History, Sparkles, X, ChevronLeft, ChevronRight, MessageSquare, Book, Lightbulb, ShieldAlert, RotateCcw, Copy, Volume2, Trash, StopCircle, RefreshCw, Share2, VolumeX, AudioLines, Image as ImageIcon, Palette, MonitorPlay, Cpu, ArrowDown, Heart, Users, Zap, Leaf, Mic, Brain, BookOpen, Download, Play, Square as SquareIcon, Loader2, Terminal, Settings2, MoreVertical, Compass, Globe } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { callAIWithFailover, AIProviderKey, AI_PROVIDERS, AIMessage, generateRecitation, generateRecitationStream, callAIStream, getDynamicModelsList, fetchAndUpdateModels, fetchAllProvidersModels, startDeepResearch, getDeepResearchStatus, generateContextualSuggestions } from '../services/aiService';
 import { ReadAloud } from './ReadAloud';
 import { ImageGenerator } from './ImageGenerator';
 import { AudioWaveform } from './AudioWaveform';
@@ -165,14 +166,15 @@ const ChatInput = React.memo(React.forwardRef<ChatInputRef, {
 
   return (
     <div className="relative group">
-      <div className="relative bg-white/95 dark:bg-[#171412]/95 backdrop-blur-xl rounded-2xl shadow-sm border border-amber-200/60 dark:border-amber-900/40 transition-colors focus-within:border-amber-500/70 flex flex-col">
+      <div className="absolute -inset-0.5 bg-gradient-to-r from-sky-400/20 to-blue-600/20 dark:from-sky-600/20 dark:to-blue-900/20 rounded-3xl blur-sm opacity-0 group-focus-within:opacity-100 transition duration-500"></div>
+      <div className="relative bg-white/90 dark:bg-[#1c1917]/90 backdrop-blur-xl rounded-3xl shadow-sm border border-amber-200/50 dark:border-white/10 transition-all duration-300 focus-within:shadow-md focus-within:border-sky-400/50 flex flex-col">
         {/* Command Mode Indicator */}
         {isListening && (
           <motion.div
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
-            className="p-2 border-b border-rose-500/20 bg-rose-50/30 dark:bg-rose-950/20 rounded-t-2xl"
+            className="p-2 border-b border-rose-500/20 bg-rose-50/30 dark:bg-rose-950/20 rounded-t-3xl"
           >
             <AudioWaveform isListening={isListening} className="justify-between w-full" />
           </motion.div>
@@ -180,11 +182,11 @@ const ChatInput = React.memo(React.forwardRef<ChatInputRef, {
 
         {localInput.startsWith('/') && (
           <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="absolute -top-9 right-4 bg-sky-600 text-white px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md border border-sky-400/50"
+            initial={{ opacity: 0, y: 10, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            className="absolute -top-10 right-4 bg-sky-500 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 shadow-lg border border-sky-400"
           >
-            <Terminal size={13} />
+            <Terminal size={14} />
             وضع الأوامر الذكية نشط
           </motion.div>
         )}
@@ -229,7 +231,7 @@ const ChatInput = React.memo(React.forwardRef<ChatInputRef, {
             </button>
             <button
               onClick={toggleListening}
-              className={`p-2 rounded-xl transition-colors shadow-sm flex items-center justify-center ${isListening ? 'bg-rose-600 text-white' : 'bg-white dark:bg-[#292524] text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50'}`}
+              className={`p-2 rounded-xl transition-all shadow-sm hover:shadow active:scale-95 flex items-center justify-center ${isListening ? 'bg-rose-500 text-white animate-pulse' : 'bg-white dark:bg-[#292524] text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50'}`}
               title={isListening ? "إيقاف الاستماع" : "تحدث الآن"}
             >
               {isListening ? <StopCircle size={18} /> : <Mic size={18} />}
@@ -248,163 +250,6 @@ const ChatInput = React.memo(React.forwardRef<ChatInputRef, {
     </div>
   );
 }));
-
-interface AIHubMessageRowProps {
-  m: Message;
-  index: number;
-  isStreaming: boolean;
-  speakingId: string | null;
-  isGeneratingAudio: string | null;
-  hasAudioUrl: boolean;
-  onCopy: (content: string) => void;
-  onShare: (content: string) => void;
-  onAIRecitation: (id: string, content: string) => void;
-  onDownloadAudio: (id: string) => void;
-  onRegenerate: (index: number) => void;
-  onDelete: (id: string) => void;
-  onSend: (text: string) => void;
-}
-
-const AIHubMessageRow = memo(({
-  m,
-  index,
-  isStreaming,
-  speakingId,
-  isGeneratingAudio,
-  hasAudioUrl,
-  onCopy,
-  onShare,
-  onAIRecitation,
-  onDownloadAudio,
-  onRegenerate,
-  onDelete,
-  onSend,
-}: AIHubMessageRowProps) => {
-  const isSpeaking = speakingId === m.id;
-  const isAudioGen = isGeneratingAudio === m.id;
-
-  return (
-    <div className={`flex flex-col ${m.role === 'user' ? 'items-start' : 'items-end'}`}>
-      {m.type === 'event' ? (
-        <div className="w-full flex justify-center my-3">
-          <div className="flex items-center gap-2 px-5 py-2 bg-amber-50/80 dark:bg-black/30 backdrop-blur-md border border-amber-200/30 dark:border-white/5 rounded-full text-xs text-amber-800 dark:text-amber-400 font-medium shadow-sm">
-            {m.eventIconName === 'book' ? <Book size={12} className="text-emerald-500" /> : 
-             m.eventIconName === 'sparkles' ? <Sparkles size={12} className="text-amber-500" /> : 
-             <History size={12} />}
-            {typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}
-          </div>
-        </div>
-      ) : (
-        <div className={`relative group transition-colors duration-150 ${
-          m.role === 'user' 
-            ? 'px-4 py-2.5 rounded-2xl rounded-tr-sm bg-gradient-to-br from-amber-500 to-amber-600 dark:from-amber-600 dark:to-amber-800 text-white max-w-[85%] border border-amber-400/30 dark:border-amber-500/20 shadow-xs' 
-            : 'w-full px-3.5 py-3 sm:px-5 sm:py-4 rounded-2xl rounded-tl-sm bg-white/95 dark:bg-[#181614]/95 text-amber-950 dark:text-amber-50 border border-amber-200/40 dark:border-amber-900/40 shadow-xs'
-        }`}>
-          <div className={`prose prose-sm max-w-none font-vazir leading-relaxed message-bubble ${m.role === 'user' ? 'text-white prose-invert' : 'dark:prose-invert'}`}>
-            <ChatMarkdownRenderer
-              content={typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}
-              isUserMessage={m.role === 'user'}
-              isStreaming={isStreaming}
-            />
-          </div>
-          
-          <div className={`flex flex-wrap items-center justify-between gap-2 mt-2.5 pt-2 border-t ${m.role === 'user' ? 'border-white/20 justify-end' : 'border-amber-100/60 dark:border-white/10 justify-between'}`}>
-            <div className="flex flex-wrap items-center gap-0.5">
-              <button onClick={() => onCopy(m.content)} className={`p-1.5 rounded-lg transition-colors ${m.role === 'user' ? 'hover:bg-white/20 text-white/90' : 'hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-400'}`} title="نسخ">
-                <Copy size={13} />
-              </button>
-              {typeof navigator.share === "function" && (
-                <button 
-                  onClick={() => onShare(m.content)} 
-                  className={`p-1.5 rounded-lg transition-colors ${m.role === 'user' ? 'hover:bg-white/20 text-white/90' : 'hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-400'}`} 
-                  title="مشاركة"
-                >
-                  <Share2 size={13} />
-                </button>
-              )}
-              <button 
-                onClick={() => window.dispatchEvent(new CustomEvent('open_spiritual_vision', { detail: { text: m.content } }))}
-                className={`p-1.5 rounded-lg transition-colors ${m.role === 'user' ? 'hover:bg-white/20 text-white/90' : 'hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-400'}`} 
-                title="رؤية بصرية"
-              >
-                <ImageIcon size={13} />
-              </button>
-              <button 
-                onClick={() => window.dispatchEvent(new CustomEvent('open_typecast', { detail: { text: m.content } }))}
-                className={`p-1.5 rounded-lg transition-colors ${m.role === 'user' ? 'hover:bg-white/20 text-white/90' : 'hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-400'}`} 
-                title="توليد صوت"
-              >
-                <AudioLines size={13} />
-              </button>
-              {m.role === 'assistant' && (
-                <>
-                  <button 
-                    onClick={() => onAIRecitation(m.id, m.content)} 
-                    className={`p-1.5 rounded-lg transition-colors ${isSpeaking ? 'bg-amber-600 text-white' : 'hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-400'}`}
-                    title={isSpeaking ? "إيقاف مؤقت" : "تلاوة ذكية"}
-                  >
-                    {isAudioGen ? <Loader2 size={13} className="animate-spin" /> : isSpeaking ? <SquareIcon size={13} /> : <Volume2 size={13} />}
-                  </button>
-                  <button 
-                    onClick={() => hasAudioUrl ? onDownloadAudio(m.id) : onAIRecitation(m.id, m.content)}
-                    className={`p-1.5 rounded-lg transition-colors ${hasAudioUrl ? 'bg-emerald-600 text-white' : 'hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-400'}`}
-                    title={hasAudioUrl ? "تنزيل التلاوة" : "توليد وتنزيل التلاوة"}
-                  >
-                    <Download size={13} />
-                  </button>
-                  <button onClick={() => onRegenerate(index)} className="p-1.5 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-400 transition-colors" title="إعادة توليد">
-                    <RefreshCw size={13} />
-                  </button>
-                </>
-              )}
-              <button onClick={() => onDelete(m.id)} className={`p-1.5 rounded-lg transition-colors ${m.role === 'user' ? 'hover:bg-white/20 text-white/80' : 'hover:bg-red-50 dark:hover:bg-red-900/40 text-red-500'}`} title="حذف">
-                <Trash size={13} />
-              </button>
-              <ReadAloud 
-                text={m.content} 
-                className="gap-1" 
-                buttonClassName={`p-1.5 rounded-lg transition-colors ${m.role === 'user' ? 'text-white/90 hover:bg-white/20' : 'text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40'}`} 
-              />
-            </div>
-            
-            <div className="flex items-center gap-1.5 text-[10px] opacity-55">
-              <span>{new Date(m.timestamp).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</span>
-              {m.role === 'assistant' && m.model && (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <span className="font-mono">{m.model}</span>
-                </>
-              )}
-            </div>
-          </div>
-
-          {m.role === 'assistant' && m.suggestions && m.suggestions.length > 0 && (
-            <div className="mt-2.5 pt-2.5 border-t border-amber-200/40 dark:border-amber-800/30" dir="rtl">
-              <div className="flex flex-wrap gap-1.5">
-                {m.suggestions.map((sug, sIdx) => (
-                  <button
-                    key={sIdx}
-                    onClick={() => onSend(sug)}
-                    className="text-[11px] bg-amber-50 dark:bg-stone-900 hover:bg-amber-600 hover:text-white dark:hover:bg-amber-600 text-amber-950 dark:text-amber-100 border border-amber-200/60 dark:border-amber-800/50 rounded-lg px-2.5 py-1 transition-colors text-right font-medium"
-                  >
-                    {sug}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}, (prev, next) => (
-  prev.m === next.m &&
-  prev.index === next.index &&
-  prev.isStreaming === next.isStreaming &&
-  prev.hasAudioUrl === next.hasAudioUrl &&
-  (prev.speakingId === prev.m.id) === (next.speakingId === next.m.id) &&
-  (prev.isGeneratingAudio === prev.m.id) === (next.isGeneratingAudio === next.m.id)
-));
 
 export const AIHub: React.FC<AIHubProps> = ({ 
   isOpen, onClose, currentContext, provider, isFullScreen = false, 
@@ -459,7 +304,7 @@ export const AIHub: React.FC<AIHubProps> = ({
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [isUpdatingModels, setIsUpdatingModels] = useState(false);
   const [modelsUpdatedMessage, setModelsUpdatedMessage] = useState<string | null>(null);
-  const [, setModelsRefreshCounter] = useState(0);
+  const [modelsRefreshCounter, setModelsRefreshCounter] = useState(0);
 
   const [enableDeepResearch, setEnableDeepResearch] = useState<boolean>(() => {
     return localStorage.getItem('aihub_deep_research') === 'true';
@@ -485,49 +330,37 @@ export const AIHub: React.FC<AIHubProps> = ({
   }, []);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
   const [scrollProgress, setScrollProgress] = useState(0);
   const isAtBottom = useRef(true);
   const currentRecitationIdRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const emptySuggestions = useMemo(() => {
-    const contextSuggestions = [];
-    if (currentContext?.surah && !currentContext.ayah) {
-      contextSuggestions.push(
-        { category: 'تدبر', text: `لخص لي سورة ${currentContext.surah}`, icon: <BookOpen size={13} /> },
-        { category: 'تفسير', text: `مقاصد سورة ${currentContext.surah}`, icon: <Lightbulb size={13} /> }
-      );
-    } else if (currentContext?.surah && currentContext.ayah) {
-      contextSuggestions.push(
-        { category: 'تفسير', text: `اشرح لي الآية ${currentContext.ayah} من سورة ${currentContext.surah}`, icon: <BookOpen size={13} /> },
-        { category: 'تدبر', text: `الدروس المستفادة من هذه الآية`, icon: <Lightbulb size={13} /> }
-      );
-    }
-    return [...contextSuggestions, ...SUGGESTIONS].slice(0, 5);
-  }, [currentContext?.surah, currentContext?.ayah]);
-
   const handleScroll = () => {
     if (!scrollRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    // If we're within 100px of the bottom, we consider it "at the bottom"
     const atBottom = scrollHeight - scrollTop - clientHeight < 100;
     isAtBottom.current = atBottom;
-    const nextShow = !atBottom && scrollHeight > clientHeight;
-    setShowScrollButton(prev => (prev !== nextShow ? nextShow : prev));
-
+    setShowScrollButton(!atBottom && scrollHeight > clientHeight);
+    
+    // Calculate scroll progress
+    const winScroll = scrollTop;
     const height = scrollHeight - clientHeight;
-    const scrolled = height > 0 ? Math.round((scrollTop / height) * 100) : 0;
-    setScrollProgress(prev => (prev !== scrolled ? scrolled : prev));
+    const scrolled = height > 0 ? (winScroll / height) * 100 : 0;
+    setScrollProgress(scrolled);
   };
 
   const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
-    const el = scrollRef.current;
-    if (el) {
+    if (scrollRef.current) {
       requestAnimationFrame(() => {
-        if (!scrollRef.current) return;
-        if (behavior === 'auto') {
-          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        } else {
+        if (scrollRef.current) {
           scrollRef.current.scrollTo({
             top: scrollRef.current.scrollHeight,
             behavior
@@ -1450,8 +1283,8 @@ ${commandText}`;
           exit={{ x: '100%' }}
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
           className={isFullScreen 
-            ? "fixed inset-0 z-[85] w-full h-[100dvh] bg-[#fcfaf7] dark:bg-[#0c0a09] flex flex-col overflow-hidden"
-            : "fixed inset-y-0 right-0 w-full md:w-[460px] bg-white/95 dark:bg-[#0c0a09]/95 backdrop-blur-3xl shadow-2xl z-[60] flex flex-col border-l border-amber-200/20"
+            ? "relative w-full h-full bg-white/95 dark:bg-[#0c0a09]/95 backdrop-blur-3xl flex flex-col border-amber-200/20 shadow-2xl"
+            : "fixed inset-y-0 right-0 w-full md:w-[450px] bg-white/95 dark:bg-[#0c0a09]/95 backdrop-blur-3xl shadow-2xl z-[60] flex flex-col border-l border-amber-200/20"
           }
         >
           {/* Neural Network Background Effect */}
@@ -1590,7 +1423,7 @@ ${commandText}`;
                           ))}
                         </select>
                         {modelsUpdatedMessage && (
-                          <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-1.5">
+                          <p className="text-[10px] text-amber-700 dark:text-amber-300 mt-1 animate-pulse">
                             {modelsUpdatedMessage}
                           </p>
                         )}
@@ -1708,95 +1541,104 @@ ${commandText}`;
             )}
           </AnimatePresence>
 
-          {/* Compact Unified Header */}
-          <div className="h-12 px-2.5 sm:px-4 border-b border-amber-200/40 dark:border-amber-900/40 flex items-center justify-between bg-white/90 dark:bg-[#141210]/90 backdrop-blur-md relative z-20 shrink-0 gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              {!isZenMode && (
-                <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-amber-50 dark:bg-zinc-900 border border-amber-200/40 dark:border-zinc-800 shrink-0">
-                  <button
-                    onClick={() => setActiveTab('chat')}
-                    className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors ${activeTab === 'chat' ? 'bg-amber-600 text-white' : 'text-amber-700 dark:text-amber-400 hover:bg-amber-100/70'}`}
-                    title="المحادثة"
-                  >
-                    <MessageSquare size={14} />
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('image')}
-                    className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors ${activeTab === 'image' ? 'bg-amber-600 text-white' : 'text-amber-700 dark:text-amber-400 hover:bg-amber-100/70'}`}
-                    title="توليد الصور"
-                  >
-                    <Palette size={14} />
-                  </button>
-                </div>
-              )}
-              <div className="min-w-0">
-                <h2 className="font-bold text-sm text-amber-950 dark:text-amber-100 leading-none font-kufi truncate">
-                  المساعد الذكي
-                </h2>
-                <p className="text-[10px] text-amber-700/70 dark:text-amber-400/70 mt-0.5 truncate">
+          {/* Tabs */}
+          {!isZenMode && (
+            <div className="p-2 border-b border-amber-200/20 flex items-center gap-2 bg-amber-50/50 dark:bg-amber-900/10 backdrop-blur-md relative z-10">
+              <button 
+                onClick={() => setActiveTab('chat')}
+                className={`p-2 rounded-xl transition-all ${activeTab === 'chat' ? 'bg-amber-600 text-white' : 'hover:bg-amber-100 dark:hover:bg-amber-900/50'}`}
+                title="المحادثة"
+              >
+                <MessageSquare size={20} />
+              </button>
+              <button 
+                onClick={() => setActiveTab('image')}
+                className={`p-2 rounded-xl transition-all ${activeTab === 'image' ? 'bg-amber-600 text-white' : 'hover:bg-amber-100 dark:hover:bg-amber-900/50'}`}
+                title="توليد الصور"
+              >
+                <Palette size={20} />
+              </button>
+            </div>
+          )}
+
+          {/* Header */}
+          <div className="p-4 border-b border-amber-200/50 dark:border-amber-800/50 flex items-center justify-between bg-white/80 dark:bg-[#1c1917]/80 backdrop-blur-md relative z-20 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/20">
+                <Sparkles size={20} />
+              </div>
+              <div>
+                <h2 className="font-bold text-lg dark:text-amber-100 leading-none font-kufi">محادثة مداد الرحمن المباشرة</h2>
+                <p className="text-[10px] text-sky-600 dark:text-sky-400/80 uppercase tracking-wider font-bold mt-1.5 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 relative">
+                    <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75"></span>
+                  </span>
                   {AI_PROVIDERS[localProvider]?.name || localProvider}
                 </p>
               </div>
             </div>
-
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <button 
                 onClick={() => setEnableGroundedResearch(!enableGroundedResearch)}
-                className={`h-7 px-2 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-medium whitespace-nowrap ${enableGroundedResearch ? 'bg-teal-600 text-white' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/70'}`}
-                title={enableGroundedResearch ? "إلغاء البحث المتقدم الموثق" : "تفعيل البحث المتقدم الموثق"}
+                className={`px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold ${enableGroundedResearch ? 'bg-teal-600 text-white shadow-sm' : 'bg-teal-50/80 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 hover:bg-teal-100'}`}
+                title={enableGroundedResearch ? "إلغاء البحث المتقدم الموثق" : "تفعيل البحث المتقدم الموثق بالويب والتفكير العالي"}
               >
-                <Compass size={13} />
-                <span className="hidden md:inline">موثق</span>
+                <Compass size={16} className={enableGroundedResearch ? "animate-spin-slow" : ""} />
+                <span className="hidden md:inline">البحث الموثق</span>
               </button>
 
               <button 
                 onClick={() => setEnableDeepResearch(!enableDeepResearch)}
-                className={`h-7 px-2 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-medium whitespace-nowrap ${enableDeepResearch ? 'bg-indigo-600 text-white' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/70'}`}
-                title={enableDeepResearch ? "إلغاء البحث العميق" : "تفعيل البحث العميق"}
+                className={`px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold ${enableDeepResearch ? 'bg-indigo-600 text-white shadow-sm' : 'bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100'}`}
+                title={enableDeepResearch ? "إلغاء البحث العميق عبر الوكيل" : "تفعيل البحث العميق عبر الوكيل البرمجي"}
               >
-                <Brain size={13} />
-                <span className="hidden md:inline">عميق</span>
+                <Brain size={16} />
+                <span className="hidden md:inline">البحث العميق</span>
               </button>
 
               <button 
                 onClick={() => setShowHistory(!showHistory)}
-                className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${showHistory ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-100' : 'hover:bg-amber-50 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}
+                className={`p-2 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold ${showHistory ? 'bg-sky-100 dark:bg-sky-900/50 text-sky-900 dark:text-sky-100 shadow-inner' : 'hover:bg-sky-50 dark:hover:bg-sky-900/30 text-sky-700 dark:text-sky-400'}`}
                 title="السجل والإعدادات"
               >
-                <Settings2 size={15} />
+                <Settings2 size={18} />
+                <span className="hidden sm:inline">الإعدادات</span>
               </button>
 
+              <div className="w-px h-5 bg-amber-200 dark:bg-amber-800 mx-0.5"></div>
+
+              {/* Action Menu (Dropdown) to reduce clutter */}
               <div className="relative">
                 <button
                   onClick={() => {
+                     // Toggle a quick menu state, or we can just keep them as small compact icons
                      const menu = document.getElementById('aihub-menu');
                      if (menu) menu.classList.toggle('hidden');
                   }}
-                  className="w-8 h-8 flex items-center justify-center hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-lg transition-colors text-amber-700 dark:text-amber-400"
-                  title="خيارات"
+                  className="p-2 hover:bg-sky-50 dark:hover:bg-sky-900/30 rounded-xl transition-colors text-sky-700 dark:text-sky-400"
                 >
-                  <MoreVertical size={15} />
+                  <MoreVertical size={18} />
                 </button>
-                <div id="aihub-menu" className="hidden absolute top-full left-0 mt-1.5 w-44 bg-white dark:bg-[#1f1c19] border border-amber-200/60 dark:border-amber-800/50 shadow-xl rounded-xl overflow-hidden py-1 z-50">
+                <div id="aihub-menu" className="hidden absolute top-full left-0 mt-2 w-48 bg-white dark:bg-[#292524] border border-amber-200 dark:border-amber-800 shadow-xl rounded-2xl overflow-hidden py-1 z-50">
                   <button 
                     onClick={() => { 
                       setMessages([]); 
                       localStorage.removeItem('ai_chat_history'); 
                       document.getElementById('aihub-menu')?.classList.add('hidden');
                     }}
-                    className="w-full text-right px-3 py-2 text-xs hover:bg-amber-50 dark:hover:bg-amber-900/20 text-emerald-600 flex items-center gap-2 font-medium"
+                    className="w-full text-right px-4 py-2.5 text-sm hover:bg-amber-50 dark:hover:bg-amber-900/20 text-emerald-600 flex items-center gap-2 font-medium"
                   >
-                    <MessageSquare size={14} /> محادثة جديدة
+                    <MessageSquare size={16} /> محادثة جديدة
                   </button>
                   {!isFullScreen && (
                     <button 
                       onClick={() => { 
-                        setMessages([]); 
+                        if(true) setMessages([]); 
                         document.getElementById('aihub-menu')?.classList.add('hidden');
                       }}
-                      className="w-full text-right px-3 py-2 text-xs hover:bg-amber-50 dark:hover:bg-amber-900/20 text-rose-600 flex items-center gap-2 font-medium"
+                      className="w-full text-right px-4 py-2.5 text-sm hover:bg-amber-50 dark:hover:bg-amber-900/20 text-rose-600 flex items-center gap-2 font-medium"
                     >
-                      <RotateCcw size={14} /> تفريغ المحادثة
+                      <RotateCcw size={16} /> تفريغ المحادثة
                     </button>
                   )}
                   {isFullScreen && (
@@ -1805,37 +1647,41 @@ ${commandText}`;
                         setIsZenMode(!isZenMode);
                         document.getElementById('aihub-menu')?.classList.add('hidden');
                       }}
-                      className="w-full text-right px-3 py-2 text-xs hover:bg-amber-50 dark:hover:bg-amber-900/20 text-amber-700 dark:text-amber-300 flex items-center gap-2 font-medium"
+                      className="w-full text-right px-4 py-2.5 text-sm hover:bg-amber-50 dark:hover:bg-amber-900/20 text-sky-600 flex items-center gap-2 font-medium"
                     >
-                      <MonitorPlay size={14} /> {isZenMode ? "إظهار الأدوات" : "وضع التركيز"}
+                      <MonitorPlay size={16} /> {isZenMode ? "إلغاء وضع التركيز" : "وضع التركيز (Zen)"}
                     </button>
                   )}
                 </div>
               </div>
 
-              <button 
-                onClick={onClose}
-                className="w-8 h-8 flex items-center justify-center rounded-lg bg-amber-100/70 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-800/60 text-amber-900 dark:text-amber-100 transition-colors"
-                title={isFullScreen ? "العودة للرئيسية" : "إغلاق"}
-              >
-                <X size={15} />
-              </button>
+              {!isFullScreen && (
+                <>
+                  <button 
+                    onClick={onClose}
+                    className="p-2 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-xl transition-colors text-rose-500 bg-white/50 dark:bg-black/20"
+                  >
+                    <X size={18} />
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
           {/* Chat Area */}
           {quotaError && (
-            <div className="absolute top-14 left-4 right-4 bg-amber-500 text-white px-4 py-2.5 rounded-xl shadow-lg z-50 text-center text-xs font-medium">
+            <div className="absolute top-4 left-4 right-4 bg-amber-500 text-white p-4 rounded-lg shadow-lg z-50 text-center">
               {quotaError}
             </div>
           )}
           {activeTab === 'chat' ? (
             <div className="flex-1 overflow-hidden flex flex-col relative">
               {/* Scroll Progress Bar */}
-              <div className="absolute top-0 left-0 right-0 h-0.5 bg-amber-100/20 dark:bg-amber-900/10 z-20 pointer-events-none">
-                <div 
-                  className="h-full w-full bg-amber-500 origin-right transition-transform duration-100"
-                  style={{ transform: `scaleX(${scrollProgress / 100})` }}
+              <div className="absolute top-0 left-0 right-0 h-0.5 bg-amber-100/20 dark:bg-amber-900/10 z-20">
+                <motion.div 
+                  className="h-full bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.5)]"
+                  style={{ width: `${scrollProgress}%` }}
+                  transition={{ type: 'spring', damping: 20, stiffness: 100 }}
                 />
               </div>
               
@@ -1843,124 +1689,274 @@ ${commandText}`;
               <div 
                 ref={scrollRef} 
                 onScroll={handleScroll}
-                style={{ overflowAnchor: 'none' }}
-                className="flex-1 overflow-y-auto overscroll-contain px-2.5 sm:px-6 py-4 custom-scrollbar relative"
+                className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar relative"
               >
-                <div className={`${isFullScreen ? 'max-w-4xl lg:max-w-5xl mx-auto' : 'w-full'} space-y-5 pb-4`}>
                 {messages.length === 0 && (
-                  <div className="flex flex-col items-center justify-center text-center space-y-5 py-6 sm:py-12 px-3">
-                    <div className="space-y-3">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-white mx-auto shadow-md shadow-amber-500/20">
-                        <Sparkles size={22} />
+                  <div className="h-full flex flex-col items-center justify-center text-center space-y-6 md:space-y-10 p-4">
+                    <motion.div 
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="space-y-4"
+                    >
+                      <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-white mx-auto shadow-xl shadow-sky-500/20">
+                        <Sparkles size={32} />
                       </div>
                       <div>
-                        <h3 className="font-bold text-lg sm:text-xl text-amber-950 dark:text-amber-100 font-kufi">المساعد الذكي · مداد الرحمن</h3>
-                        <p className="text-xs text-amber-800/70 dark:text-amber-300/70 max-w-sm mx-auto mt-1.5 leading-relaxed">
-                          لسان الآية ومحركك للتدبر والتفسير والبحث القرآني المباشر
+                        <h3 className="font-bold text-xl md:text-2xl dark:text-amber-100 font-kufi">مداد الرحمن المباشر</h3>
+                        <p className="text-xs md:text-sm text-sky-800/60 dark:text-sky-400/60 max-w-[320px] mx-auto mt-2 leading-relaxed">
+                          أنا «مداد الرحمن» – لسان الآية ومحركك الكوني للتدبر والبحث القرآني المتقدم
                         </p>
                       </div>
+                    </motion.div>
+
+                    <div className="w-full max-w-3xl px-4 flex flex-wrap justify-center gap-2.5">
+                      {(() => {
+                        const dynamicSuggestions = [...SUGGESTIONS].sort(() => 0.5 - Math.random());
+                        const contextSuggestions = [];
+                        if (currentContext?.surah && !currentContext.ayah) {
+                          contextSuggestions.push(
+                            { category: 'تدبر', text: `لخص لي سورة ${currentContext.surah}`, icon: <BookOpen size={14} /> },
+                            { category: 'تفسير', text: `مقاصد سورة ${currentContext.surah}`, icon: <Lightbulb size={14} /> }
+                          );
+                        } else if (currentContext?.surah && currentContext.ayah) {
+                          contextSuggestions.push(
+                            { category: 'تفسير', text: `اشرح لي الآية ${currentContext.ayah} من سورة ${currentContext.surah}`, icon: <BookOpen size={14} /> },
+                            { category: 'تدبر', text: `الدروس المستفادة من هذه الآية`, icon: <Lightbulb size={14} /> }
+                          );
+                        }
+                        
+                        // Combine 2 context suggestions (if any) and 3-5 random suggestions
+                        const displaySuggestions = [...contextSuggestions, ...dynamicSuggestions].slice(0, 5);
+
+                        return displaySuggestions.map((suggestion, idx) => (
+                          <motion.button
+                            key={idx}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                            onClick={() => handleSend(suggestion.text)}
+                            className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-sky-50/50 dark:bg-white/5 border border-sky-100 dark:border-white/10 hover:border-sky-400 dark:hover:border-sky-500/50 hover:bg-white dark:hover:bg-white/10 text-sky-900 dark:text-sky-100 transition-all text-sm group shadow-sm hover:shadow-md active:scale-95"
+                          >
+                            <span className="text-sky-600 dark:text-sky-400 group-hover:scale-110 transition-transform">
+                              {suggestion.icon}
+                            </span>
+                            <span className="font-medium text-[13px]">{suggestion.text}</span>
+                          </motion.button>
+                        ));
+                      })()}
                     </div>
 
-                    <div className="w-full max-w-2xl flex flex-wrap justify-center gap-2">
-                      {emptySuggestions.map((suggestion, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => handleSend(suggestion.text)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-stone-900 border border-amber-200/60 dark:border-amber-800/50 hover:border-amber-400 dark:hover:border-amber-500/60 hover:bg-amber-50 dark:hover:bg-stone-800 text-amber-950 dark:text-amber-100 transition-colors text-xs font-medium active:scale-95"
-                        >
-                          <span className="text-amber-600 dark:text-amber-400 shrink-0">
-                            {suggestion.icon}
-                          </span>
-                          <span>{suggestion.text}</span>
-                        </button>
-                      ))}
-                    </div>
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.8 }}
+                      className="p-4 rounded-2xl bg-sky-50 dark:bg-sky-900/10 border border-sky-100 dark:border-sky-900/30 max-w-md w-full"
+                    >
+                      <div className="flex items-center gap-2 text-sky-700 dark:text-sky-400 mb-2 font-bold text-xs">
+                        <Lightbulb size={14} />
+                        <span>حكمة اليوم</span>
+                      </div>
+                      <p className="text-sm italic text-sky-900/80 dark:text-sky-200/80">"العلم صيد والكتابة قيده، قيد صيودك بالحبال الواثقة."</p>
+                    </motion.div>
                   </div>
                 )}
 
-                {messages.map((m, idx) => (
-                  <AIHubMessageRow
+                {messages.map((m) => (
+                  <motion.div
                     key={m.id}
-                    m={m}
-                    index={idx}
-                    isStreaming={isLoading && idx === messages.length - 1 && m.role === 'assistant'}
-                    speakingId={speakingId}
-                    isGeneratingAudio={isGeneratingAudio}
-                    hasAudioUrl={Boolean(audioUrls[m.id])}
-                    onCopy={copyToClipboard}
-                    onShare={shareMessage}
-                    onAIRecitation={handleAIRecitation}
-                    onDownloadAudio={downloadAudioFile}
-                    onRegenerate={regenerateMessage}
-                    onDelete={deleteMessage}
-                    onSend={handleSend}
-                  />
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`flex flex-col ${m.role === 'user' ? 'items-start' : 'items-end'}`}
+                  >
+                    {m.type === 'event' ? (
+                      <div className="w-full flex justify-center my-3">
+                        <div className="flex items-center gap-2 px-5 py-2 bg-amber-50/80 dark:bg-black/30 backdrop-blur-md border border-amber-200/30 dark:border-white/5 rounded-full text-xs text-amber-800 dark:text-amber-400 font-medium shadow-sm">
+                          {m.eventIconName === 'book' ? <Book size={12} className="text-emerald-500" /> : 
+                           m.eventIconName === 'sparkles' ? <Sparkles size={12} className="text-amber-500" /> : 
+                           <History size={12} />}
+                          {typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={`p-5 sm:p-6 rounded-[2rem] shadow-sm relative group transition-all duration-300 hover:shadow-md ${
+                        m.role === 'user' 
+                          ? 'bg-gradient-to-br from-amber-500 to-amber-600 dark:from-amber-600 dark:to-amber-800 text-white rounded-tr-sm max-w-[85%] border border-amber-400/30 dark:border-amber-500/20' 
+                          : 'bg-white/95 dark:bg-[#1c1917]/95 backdrop-blur-xl text-amber-950 dark:text-amber-50 border border-amber-100 dark:border-white/5 rounded-tl-sm max-w-[95%] shadow-lg'
+                      }`}>
+                        <div className={`prose prose-sm max-w-none font-vazir leading-relaxed message-bubble ${m.role === 'user' ? 'text-white prose-invert' : 'dark:prose-invert'}`}>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}</ReactMarkdown>
+                        </div>
+                        
+                        <div className={`flex flex-wrap items-center gap-1 mt-4 pt-3 border-t ${m.role === 'user' ? 'border-white/20' : 'border-amber-100/50 dark:border-white/10'} sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`flex flex-wrap items-center rounded-2xl px-2 py-1.5 border backdrop-blur-md gap-1 shadow-sm ${m.role === 'user' ? 'bg-black/20 border-white/10' : 'bg-amber-50/80 dark:bg-black/20 border-amber-100/50 dark:border-white/5'}`}>
+                            <button onClick={() => copyToClipboard(m.content)} className={`p-2 rounded-xl transition-all hover:scale-105 ${m.role === 'user' ? 'hover:bg-white/20 text-white/90' : 'hover:bg-amber-200/80 dark:hover:bg-amber-800/80 text-amber-700 dark:text-amber-400'}`} title="نسخ">
+                              <Copy size={14} />
+                            </button>
+                            {typeof navigator.share === "function" && (
+                              <button 
+                                onClick={() => shareMessage(m.content)} 
+                                className={`p-2 rounded-xl transition-all hover:scale-105 ${m.role === 'user' ? 'hover:bg-white/20 text-white/90' : 'hover:bg-amber-200/80 dark:hover:bg-amber-800/80 text-amber-700 dark:text-amber-400'}`} 
+                                title="مشاركة"
+                              >
+                                <Share2 size={14} />
+                              </button>
+                            )}
+                            <button 
+                              onClick={() => window.dispatchEvent(new CustomEvent('open_spiritual_vision', { detail: { text: m.content } }))}
+                              className={`p-2 rounded-xl transition-all hover:scale-105 ${m.role === 'user' ? 'hover:bg-white/20 text-white/90' : 'hover:bg-amber-200/80 dark:hover:bg-amber-800/80 text-amber-700 dark:text-amber-400'}`} 
+                              title="رؤية بصرية"
+                            >
+                              <ImageIcon size={14} />
+                            </button>
+                            <button 
+                              onClick={() => window.dispatchEvent(new CustomEvent('open_typecast', { detail: { text: m.content } }))}
+                              className="p-2 rounded-xl hover:bg-amber-200/80 dark:hover:bg-amber-800/80 text-amber-700 dark:text-amber-400 transition-all hover:scale-105" 
+                              title="Typecast توليد صوت"
+                            >
+                              <AudioLines size={14} />
+                            </button>
+                            {m.role === 'assistant' && (
+                              <>
+                                <div className="w-px h-4 bg-amber-200 dark:bg-amber-800 mx-1"></div>
+                                <button 
+                                  onClick={() => handleAIRecitation(m.id, m.content)} 
+                                  className={`p-2 rounded-xl transition-all hover:scale-105 ${speakingId === m.id ? 'bg-amber-600 text-white animate-pulse shadow-md shadow-amber-600/20' : 'hover:bg-amber-200/80 dark:hover:bg-amber-800/80 text-amber-700 dark:text-amber-400'}`}
+                                  title={speakingId === m.id ? "إيقاف مؤقت" : "تلاوة ذكية"}
+                                >
+                                  {isGeneratingAudio === m.id ? <Loader2 size={14} className="animate-spin" /> : speakingId === m.id ? <SquareIcon size={14} /> : <Volume2 size={14} />}
+                                </button>
+                                <button 
+                                  onClick={() => audioUrls[m.id] ? downloadAudioFile(m.id) : handleAIRecitation(m.id, m.content)}
+                                  className={`p-2 rounded-xl transition-all hover:scale-105 ${audioUrls[m.id] ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' : 'hover:bg-amber-200/80 dark:hover:bg-amber-800/80 text-amber-700 dark:text-amber-400'}`}
+                                  title={audioUrls[m.id] ? "تنزيل التلاوة (MP3)" : "توليد وتنزيل التلاوة"}
+                                >
+                                  <Download size={14} />
+                                </button>
+                                <button onClick={() => regenerateMessage(messages.indexOf(m))} className="p-2 rounded-xl hover:bg-amber-200/80 dark:hover:bg-amber-800/80 text-amber-700 dark:text-amber-400 transition-all hover:scale-105" title="إعادة توليد">
+                                  <RefreshCw size={14} />
+                                </button>
+                              </>
+                            )}
+                            <div className="w-px h-4 bg-amber-200 dark:bg-amber-800 mx-1"></div>
+                            <button onClick={() => deleteMessage(m.id)} className="p-2 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/50 text-red-500 transition-colors hover:scale-105" title="حذف">
+                              <Trash size={14} />
+                            </button>
+                            <div className="flex items-center gap-1.5 p-1 rounded-xl hover:bg-amber-200/80 dark:hover:bg-amber-800/80 transition-all hover:scale-105 ml-1">
+                              <ReadAloud 
+                                text={m.content} 
+                                className="gap-1.5" 
+                                buttonClassName="p-1 text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-200 transition-colors" 
+                              />
+                            </div>
+                          </div>
+                          
+                          {m.role === 'assistant' && m.model && (
+                            <div className="mr-2 flex items-center gap-1.5 opacity-60 bg-amber-100/80 dark:bg-black/20 px-3 py-1.5 rounded-full border border-amber-200/50 dark:border-white/5 backdrop-blur-sm shadow-sm">
+                              <Cpu size={12} className="text-amber-700 dark:text-amber-400" />
+                              <span className="text-[10px] font-mono uppercase tracking-wider text-amber-800 dark:text-amber-300">{m.model}</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="mt-2 text-[10px] opacity-40 flex justify-between items-center px-1">
+                          <span>{new Date(m.timestamp).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+
+                        {m.role === 'assistant' && m.suggestions && m.suggestions.length > 0 && (
+                          <motion.div 
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mt-3 pt-3 border-t border-sky-200/40 dark:border-sky-800/30"
+                            dir="rtl"
+                          >
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-sky-800 dark:text-sky-300 mb-2">
+                              <Sparkles size={14} className="text-sky-500 animate-pulse" />
+                              <span>أسئلة ومحاور لمتابعة الحوار:</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {m.suggestions.map((sug, sIdx) => (
+                                <button
+                                  key={sIdx}
+                                  onClick={() => handleSend(sug)}
+                                  className="text-xs bg-sky-50 dark:bg-stone-900 hover:bg-sky-600 hover:text-white dark:hover:bg-sky-600 text-sky-950 dark:text-sky-100 border border-sky-200/60 dark:border-sky-800/60 rounded-xl px-3 py-1.5 transition-all duration-200 shadow-sm hover:shadow active:scale-95 text-right font-medium"
+                                >
+                                  {sug}
+                                </button>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </div>
+                    )}
+                  </motion.div>
                 ))}
                 
                 {isLoading && (
                   <div className="flex justify-end">
-                    <div className="bg-white/90 dark:bg-[#181614]/90 border border-amber-200/40 dark:border-amber-900/40 px-4 py-3 rounded-2xl rounded-tl-sm shadow-xs flex items-center gap-2">
-                      <Loader2 size={14} className="animate-spin text-amber-600 dark:text-amber-400" />
-                      <span className="text-xs text-amber-800/80 dark:text-amber-200/80">جاري التوليد...</span>
+                    <div className="bg-white dark:bg-[#1c1917] border border-amber-200/20 p-4 rounded-2xl rounded-tl-none shadow-sm">
+                      <div className="flex gap-1">
+                        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="w-2 h-2 bg-amber-400 rounded-full" />
+                        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-2 h-2 bg-amber-500 rounded-full" />
+                        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-2 h-2 bg-amber-600 rounded-full" />
+                      </div>
                     </div>
                   </div>
                 )}
                 <div ref={messagesEndRef} />
-                </div>
-              </div>
 
-              {/* Scroll to Bottom Button (outside scroll container flow so it never causes scrollHeight jumps) */}
-              <AnimatePresence>
-                {showScrollButton && (
-                  <motion.button
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 8 }}
-                    onClick={() => scrollToBottom('smooth')}
-                    className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-xl bg-amber-600 text-white shadow-md hover:bg-amber-700 transition-colors z-40 flex items-center gap-1.5 font-semibold text-[11px]"
-                  >
-                    <ArrowDown size={13} />
-                    <span>الأسفل</span>
-                  </motion.button>
-                )}
-              </AnimatePresence>
+                {/* Scroll to Bottom Button */}
+                <AnimatePresence>
+                  {showScrollButton && (
+                    <motion.button
+                      initial={{ opacity: 0, y: 10, scale: 0.8 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.8 }}
+                      onClick={() => scrollToBottom('smooth')}
+                      className="sticky bottom-4 left-1/2 -translate-x-1/2 p-3 rounded-full bg-sky-600 text-white shadow-lg hover:bg-sky-700 transition-all z-50 flex items-center gap-2 font-bold text-xs"
+                    >
+                      <ArrowDown size={16} />
+                      <span>رسائل جديدة</span>
+                    </motion.button>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           ) : (
-            <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
+            <div className="flex-1 p-4 overflow-y-auto">
               <ImageGenerator />
             </div>
           )}
 
           {activeTab === 'chat' && (
             /* Input Area */
-            <div className="px-2.5 py-2 sm:px-4 sm:py-2.5 border-t border-amber-200/40 dark:border-amber-900/40 bg-white/90 dark:bg-[#141210]/90 backdrop-blur-md relative z-10 w-full shrink-0">
-              <div className={`${isFullScreen ? 'max-w-4xl lg:max-w-5xl mx-auto' : 'w-full'} flex flex-col gap-1.5`}>
-                {currentContext?.surah && (
-                  <div className="flex items-center gap-1.5 text-[11px] text-amber-800/80 dark:text-amber-300/80 px-1">
-                    <Book size={12} />
-                    <span>{getSurahDisplayName(currentContext.surah || "")}{currentContext.ayah ? ` · آية ${currentContext.ayah}` : ''}</span>
-                  </div>
-                )}
-
-                <div className="flex gap-1.5 overflow-x-auto pb-0.5 hide-scrollbar">
-                  {suggestions.map((s, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleSend(s.prompt)}
-                      className="h-7 flex-shrink-0 flex items-center gap-1.5 px-2.5 bg-amber-50/80 dark:bg-stone-900 border border-amber-200/50 dark:border-amber-800/40 rounded-lg text-[11px] font-medium hover:bg-amber-100 dark:hover:bg-stone-800 transition-colors text-amber-900 dark:text-amber-200 whitespace-nowrap"
-                    >
-                      {s.icon}
-                      <span>{s.text}</span>
-                    </button>
-                  ))}
+            <div className={`p-4 border-t border-amber-200/20 bg-amber-50/30 dark:bg-black/20 backdrop-blur-md relative z-10 ${isFullScreen ? 'max-w-4xl mx-auto w-full' : ''}`}>
+              {/* Context Badge */}
+              {currentContext?.surah && (
+                <div className="mb-3 flex items-center gap-2 text-xs bg-amber-100 dark:bg-amber-900/40 p-2 rounded-lg text-amber-800 dark:text-amber-200 border border-amber-200/30">
+                  <Book size={14} />
+                  <span>سياق البحث: {getSurahDisplayName(currentContext.surah || "")}، آية {currentContext.ayah}</span>
                 </div>
+              )}
 
-                <ChatInput 
-                  ref={chatInputRef}
-                  onSendMessage={handleSend}
-                  isLoading={isLoading}
-                />
+              {/* Suggestions */}
+              <div className="flex gap-2 overflow-x-auto pb-3 no-scrollbar scroll-smooth">
+                {suggestions.map((s, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSend(s.prompt)}
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-white/80 dark:bg-[#1c1917]/80 backdrop-blur-sm border border-amber-200/50 dark:border-amber-800/30 rounded-full text-sm hover:bg-amber-50 dark:hover:bg-amber-900/40 hover:border-amber-400/50 transition-all dark:text-amber-200 shadow-sm hover:shadow-md hover:-translate-y-0.5"
+                  >
+                    {s.icon}
+                    {s.text}
+                  </button>
+                ))}
               </div>
+
+              <ChatInput 
+                ref={chatInputRef}
+                onSendMessage={handleSend}
+                isLoading={isLoading}
+              />
             </div>
           )}
 

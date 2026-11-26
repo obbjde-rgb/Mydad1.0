@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Loader2, Download, Image as ImageIcon, Settings2, RefreshCw, Wand2, ChevronDown, Trash2, ExternalLink, X, Minimize, Maximize, Copy } from 'lucide-react';
+import { Sparkles, Loader2, Download, Image as ImageIcon, Settings2, RefreshCw, Wand2, Layout, ChevronDown, Trash2, Share2, ExternalLink, X, Minimize, Maximize, Palette, Copy, Play } from 'lucide-react';
 import { AI_PROVIDERS, AIProviderKey, generateImage, generateSmartPrompt, generateShortArabicSummary, ImageGenerationConfig, fetchAllProvidersModels, getDynamicImageModelsList } from '../services/aiService';
 import { safeLocalStorageSet, safeLocalStorageGet } from '../lib/utils';
 
@@ -22,12 +22,22 @@ export const ImageGenerator: React.FC = () => {
     const saved = localStorage.getItem('image_gen_history');
     return saved ? JSON.parse(saved) : [];
   });
+  const [showSettings, setShowSettings] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
   const [previewImage, setPreviewImage] = useState<{ url: string; prompt: string; arabicSummary?: string } | null>(null);
   const [isExpandedPreview, setIsExpandedPreview] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedPrompt, setGeneratedPrompt] = useState<string | null>(null);
+  const [arabicSummary, setArabicSummary] = useState<string | null>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+
+  const toggleFullscreen = () => {
+    setIsExpandedPreview(!isExpandedPreview);
+  };
+
   const [isUpdatingModels, setIsUpdatingModels] = useState(false);
   const [modelsUpdatedMessage, setModelsUpdatedMessage] = useState<string | null>(null);
-  const [, setModelsRefreshCounter] = useState(0);
+  const [modelsRefreshCounter, setModelsRefreshCounter] = useState(0);
 
   useEffect(() => {
     // Automatically fetch models on mount
@@ -96,14 +106,7 @@ export const ImageGenerator: React.FC = () => {
       setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
     } catch (err) {
       console.error('Download failed:', err);
-      const link = document.createElement('a');
-      link.href = url;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.download = 'midad-art.png';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      window.open(url, '_blank');
     }
   };
 
@@ -134,6 +137,12 @@ export const ImageGenerator: React.FC = () => {
     window.addEventListener('trigger_image_gen', handleTrigger);
     return () => window.removeEventListener('trigger_image_gen', handleTrigger);
   }, []);
+
+  const [isImageLoading, setIsImageLoading] = useState<Record<number, boolean>>({});
+
+  const handleImageLoad = (timestamp: number) => {
+    setIsImageLoading(prev => ({ ...prev, [timestamp]: false }));
+  };
 
   const handleGenerate = async () => {
     if (!prompt.trim() || isLoading) return;
@@ -178,6 +187,10 @@ export const ImageGenerator: React.FC = () => {
         height,
       };
 
+      setGeneratedPrompt(finalPrompt);
+      setArabicSummary(shortArabicSummary);
+      setIsGenerating(true);
+
       const url = await generateImage(finalPrompt, provider, config);
       
       const timestamp = Date.now();
@@ -190,8 +203,10 @@ export const ImageGenerator: React.FC = () => {
         arabicSummary: shortArabicSummary
       };
 
+      setIsImageLoading(prev => ({ ...prev, [timestamp]: true }));
       setHistory(prev => [newEntry, ...prev]);
       setPreviewImage({ url, prompt: finalPrompt, arabicSummary: shortArabicSummary });
+      setIsGenerating(false);
     } catch (err: any) {
       console.error(err);
       if (err && err.message && typeof err.message === 'string' && (err.message.includes('404') || err.message.includes('Requested entity was not found'))) {
@@ -209,108 +224,210 @@ export const ImageGenerator: React.FC = () => {
     setHistory(prev => prev.filter((_, i) => i !== index));
   };
 
+  const shareImage = async (url: string, prompt: string) => {
+    if (navigator.share) {
+      try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const safeName = prompt.substring(0, 30).replace(/[^a-zA-Z0-9\u0600-\u06FF\s-]/g, '').trim() || 'midad-art';
+        const file = new File([blob], `${safeName}.png`, { type: 'image/png' });
+        await navigator.share({
+          files: [file],
+          title: prompt,
+        });
+      } catch (e: any) {
+        if (e.name !== 'AbortError' && e.message !== 'Share canceled') {
+          console.error("Share failed", e);
+        }
+      }
+    }
+  };
+
+  const downloadImageWithText = async (url: string, prompt: string, arabicSummary?: string) => {
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('No canvas context');
+
+      const img = new Image();
+      if (!url.startsWith('data:')) {
+        img.crossOrigin = 'anonymous';
+        img.src = `/api/proxy/image?url=${encodeURIComponent(url)}`;
+      } else {
+        img.src = url;
+      }
+      
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+
+      const fontSize = Math.max(Math.floor(canvas.width * 0.04), 24);
+      const padding = fontSize * 1.5;
+      const gradientHeight = fontSize * 6;
+
+      const gradient = ctx.createLinearGradient(0, canvas.height - gradientHeight, 0, canvas.height);
+      gradient.addColorStop(0, 'rgba(0,0,0,0)');
+      gradient.addColorStop(0.5, 'rgba(0,0,0,0.6)');
+      gradient.addColorStop(1, 'rgba(0,0,0,0.9)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, canvas.height - gradientHeight, canvas.width, gradientHeight);
+
+      ctx.fillStyle = 'white';
+      ctx.font = `bold ${fontSize}px "Inter", "Arial", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = 8;
+      
+      const words = (arabicSummary || prompt).split(' ');
+      let line = '';
+      const lines = [];
+      const maxWidth = canvas.width - (padding * 2);
+      
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' ';
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && n > 0) {
+          lines.push(line);
+          line = words[n] + ' ';
+        } else {
+          line = testLine;
+        }
+      }
+      lines.push(line);
+
+      const lineHeight = fontSize * 1.4;
+      let y = canvas.height - padding - ((lines.length - 1) * lineHeight);
+      
+      for (let i = 0; i < lines.length; i++) {
+        ctx.fillText(lines[i], canvas.width / 2, y);
+        y += lineHeight;
+      }
+
+      ctx.font = `normal ${Math.max(fontSize * 0.5, 14)}px Arial`;
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.textAlign = 'left';
+      ctx.fillText('Midad AI Art', padding / 2, canvas.height - padding / 4);
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) throw new Error('Canvas toBlob failed');
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const fullSafeName = (arabicSummary || prompt).substring(0, 50).replace(/[^a-zA-Z0-9\u0600-\u06FF\s-]/g, '_').trim() || 'midad-art';
+        link.download = `${fullSafeName}.png`;
+        link.href = blobUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      }, 'image/png', 1.0);
+    } catch (err) {
+      console.error('Download with text failed:', err);
+      downloadImage(url, prompt);
+    }
+  };
+
   return (
     <div className={`flex flex-col h-full p-2 sm:p-4 md:p-6 mx-auto w-full transition-all duration-500 ${isExpanded ? 'expanded-view p-8 md:p-16' : 'max-w-7xl'}`} dir="rtl">
       {/* Header with Smart Buttons */}
       <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 bg-amber-100 dark:bg-amber-900/50 rounded-2xl flex items-center justify-center">
-            <ImageIcon size={24} className="text-amber-700 dark:text-amber-300" />
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-amber-100 dark:bg-amber-900/50 rounded-2xl shadow-inner">
+            <ImageIcon size={28} className="text-amber-700 dark:text-amber-300" />
           </div>
           <div>
-            <h2 className="text-2xl sm:text-3xl font-black text-amber-950 dark:text-amber-50 tracking-tight">المولد الفني الذكي</h2>
-            <p className="text-xs sm:text-sm text-amber-800/65 dark:text-amber-400/65 font-medium">حوّل كلماتك إلى لوحات فنية روحانية</p>
+            <h2 className="text-3xl font-black text-amber-950 dark:text-amber-50 tracking-tight">المولد الفني الذكي</h2>
+            <p className="text-sm text-amber-800/60 dark:text-amber-400/60 font-medium">حول كلماتك إلى لوحات فنية روحانية</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <button 
             onClick={() => window.dispatchEvent(new CustomEvent('open_ai_chat'))}
-            className="w-10 h-10 bg-white dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/40 transition-colors border border-amber-200/70 dark:border-amber-800/50 shadow-sm flex items-center justify-center"
+            className="p-3 bg-white dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 rounded-xl hover:scale-110 transition-all border border-amber-200 dark:border-amber-800 shadow-sm group"
             title="المساعد الذكي"
           >
-            <Sparkles size={18} />
+            <Sparkles size={20} className="group-hover:rotate-12 transition-transform" />
           </button>
           <button 
             onClick={() => setIsExpanded(!isExpanded)} 
-            className="w-10 h-10 bg-white dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/40 border border-amber-200/70 dark:border-amber-800/50 shadow-sm transition-colors flex items-center justify-center"
+            className="bg-white dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 p-3 rounded-xl border border-amber-200 dark:border-amber-800 shadow-sm hover:scale-110 transition-all"
             title={isExpanded ? "تصغير" : "ملء الشاشة"}
           >
-            {isExpanded ? <Minimize size={18} /> : <Maximize size={18} />}
+            {isExpanded ? <Minimize size={20} /> : <Maximize size={20} />}
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 lg:min-h-0 overflow-y-auto lg:overflow-hidden custom-scrollbar pb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 lg:min-h-0 overflow-y-auto lg:overflow-hidden custom-scrollbar pb-10">
         {/* Left Column: Input & Settings */}
-        <div className="lg:col-span-5 flex flex-col gap-5 lg:overflow-y-auto custom-scrollbar pb-4">
+        <div className="lg:col-span-5 flex flex-col gap-6 lg:overflow-y-auto custom-scrollbar pb-6">
           {/* Main Input Area */}
-          <div className="bg-white/95 dark:bg-[#171412]/95 p-5 rounded-2xl border border-amber-200/70 dark:border-amber-900/50 shadow-sm flex flex-col gap-4 relative">
+          <div className="bg-white dark:bg-[#1c1917] p-6 rounded-[2.5rem] border-2 border-amber-300 dark:border-amber-700/50 shadow-2xl flex flex-col gap-4 relative">
             <div className="flex items-center justify-between">
               <label className="text-sm font-bold text-amber-900 dark:text-amber-100 flex items-center gap-2">
-                <Wand2 size={17} className="text-amber-600" />
+                <Wand2 size={18} className="text-amber-600" />
                 ماذا تريد أن ترسم؟
               </label>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-amber-700/70 dark:text-amber-300/60">تحسين ذكي</span>
+                <span className="text-[10px] font-bold text-amber-600/60 dark:text-amber-400/40 uppercase tracking-widest">تحسين ذكي</span>
                 <button 
                   onClick={() => setIsSmartMode(!isSmartMode)}
-                  className={`w-10 h-5 rounded-full transition-all relative ${isSmartMode ? 'bg-amber-600' : 'bg-amber-200 dark:bg-white/15'}`}
+                  className={`w-10 h-5 rounded-full transition-all relative ${isSmartMode ? 'bg-amber-500' : 'bg-amber-200 dark:bg-white/10'}`}
                 >
-                  <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${isSmartMode ? 'right-6' : 'right-1'}`} />
+                  <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${isSmartMode ? 'right-6' : 'right-1'}`}></div>
                 </button>
               </div>
             </div>
 
-            <div className="w-full relative z-10 flex flex-col gap-3.5">
+            <div className="w-full relative z-10 flex flex-col gap-4">
               <textarea 
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="عبر عن خيالك الفني هنا... (مثال: نخلة وسط الصحراء عند الغروب)"
-                className="w-full min-h-[140px] p-4 bg-amber-50/40 dark:bg-black/25 rounded-xl border border-amber-200/70 dark:border-amber-900/50 text-base text-amber-950 dark:text-amber-50 outline-none focus:ring-2 focus:ring-amber-500/25 focus:border-amber-500 transition-all resize-y placeholder:text-amber-900/45 dark:placeholder:text-amber-100/40"
+                className="w-full min-h-[150px] p-6 bg-white dark:bg-[#292524] rounded-3xl border-2 border-amber-400/50 dark:border-amber-600/30 text-lg text-amber-950 dark:text-amber-50 outline-none focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 transition-all resize-y placeholder:text-amber-900/50 dark:placeholder:text-amber-100/40 font-medium shadow-inner block"
                 dir="rtl"
+                style={{ display: 'block', visibility: 'visible', opacity: 1 }}
               />
 
               <button 
                 id="generate-image-btn"
                 onClick={handleGenerate}
                 disabled={isLoading || !prompt.trim()}
-                className={`w-full h-11 rounded-xl font-bold text-base flex items-center justify-center gap-2.5 transition-colors shadow-sm ${isLoading || !prompt.trim() ? 'bg-amber-100 dark:bg-white/5 text-amber-400 dark:text-white/25 cursor-not-allowed' : 'bg-gradient-to-r from-amber-600 to-amber-700 text-white hover:from-amber-700 hover:to-amber-800'}`}
+                className={`w-full py-4 rounded-2xl font-black text-xl flex items-center justify-center gap-3 transition-all shadow-lg active:scale-95 block ${isLoading || !prompt.trim() ? 'bg-amber-100 dark:bg-white/5 text-amber-300 dark:text-white/10 cursor-not-allowed' : 'bg-gradient-to-r from-amber-500 to-amber-600 text-white hover:shadow-amber-500/40 hover:-translate-y-0.5 shadow-amber-500/20'}`}
+                style={{ display: 'flex', visibility: 'visible', opacity: 1 }}
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="animate-spin" size={19} />
+                    <Loader2 className="animate-spin" size={24} />
                     <span>جاري التوليد...</span>
                   </>
                 ) : (
                   <>
-                    <Sparkles size={19} />
+                    <Sparkles size={24} />
                     <span>توليد اللوحة</span>
                   </>
                 )}
               </button>
-
-              {error && (
-                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200/70 dark:border-red-900/40 text-red-700 dark:text-red-300 text-xs font-medium flex items-center justify-between gap-2">
-                  <span>{error}</span>
-                  <button onClick={() => setError(null)} className="shrink-0 text-red-500 hover:text-red-700">
-                    <X size={14} />
-                  </button>
-                </div>
-              )}
             </div>
           </div>
 
           {/* Settings Section */}
-          <div className="bg-white/95 dark:bg-[#171412]/95 p-5 rounded-2xl border border-amber-200/60 dark:border-amber-900/40 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <Settings2 size={17} className="text-amber-600" />
-              <h3 className="text-sm font-bold text-amber-950 dark:text-amber-100">إعدادات التوليد</h3>
+          <div className="bg-white/90 dark:bg-[#1c1917]/90 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-amber-200/50 dark:border-white/10 shadow-lg">
+            <div className="flex items-center gap-2 mb-6">
+              <Settings2 size={18} className="text-amber-600" />
+              <h3 className="text-sm font-bold text-amber-900 dark:text-amber-100">إعدادات التوليد</h3>
             </div>
 
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-amber-800/75 dark:text-amber-300/75 px-1">المزود</label>
+            <div className="space-y-6">
+              {/* Provider & Model */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-amber-800/60 dark:text-amber-400/60 uppercase tracking-widest px-1">المزود</label>
                   <div className="relative">
                     <select 
                       value={provider}
@@ -320,7 +437,7 @@ export const ImageGenerator: React.FC = () => {
                         const defaultModel = newProvider === 'gemini' ? 'gemini-3.5-flash' : (newProvider === 'pollinations' ? 'flux' : (newProvider === 'routeway' ? 'step-3.5-flash:free' : (AI_PROVIDERS[newProvider] as any).defaultModel));
                         setModel(defaultModel);
                       }}
-                      className="w-full h-10 appearance-none px-3 rounded-xl bg-amber-50/50 dark:bg-black/25 border border-amber-200/60 dark:border-amber-900/40 text-xs outline-none focus:ring-2 focus:ring-amber-500/30 transition-all dark:text-amber-100 cursor-pointer"
+                      className="w-full appearance-none p-3 rounded-xl bg-amber-50/50 dark:bg-black/20 border border-amber-100 dark:border-white/5 text-xs outline-none focus:ring-2 focus:ring-amber-500/30 transition-all dark:text-amber-100 cursor-pointer"
                     >
                       {IMAGE_PROVIDERS.map(p => (
                         <option key={p} value={p}>{AI_PROVIDERS[p]?.name || p}</option>
@@ -329,26 +446,26 @@ export const ImageGenerator: React.FC = () => {
                     <ChevronDown size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-amber-600" />
                   </div>
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between px-1">
-                    <label className="text-xs font-bold text-amber-800/75 dark:text-amber-300/75">النموذج</label>
+                    <label className="text-[10px] font-bold text-amber-800/60 dark:text-amber-400/60 uppercase tracking-widest">النموذج</label>
                     <button
                       onClick={handleRefreshModels}
                       disabled={isUpdatingModels}
-                      className="text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400 flex items-center gap-1 disabled:opacity-50"
+                      className="text-[10px] text-amber-600 hover:text-amber-800 dark:text-amber-400 flex items-center gap-1 disabled:opacity-50"
                       title="تحديث النماذج"
                     >
                       {isUpdatingModels ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
                     </button>
                   </div>
                   {modelsUpdatedMessage && (
-                    <div className="text-[11px] text-emerald-600 dark:text-emerald-400 px-1">{modelsUpdatedMessage}</div>
+                    <div className="text-[10px] text-emerald-500 animate-pulse px-1">{modelsUpdatedMessage}</div>
                   )}
                   <div className="relative">
                     <select 
                       value={model}
                       onChange={(e) => setModel(e.target.value)}
-                      className="w-full h-10 appearance-none px-3 rounded-xl bg-amber-50/50 dark:bg-black/25 border border-amber-200/60 dark:border-amber-900/40 text-xs outline-none focus:ring-2 focus:ring-amber-500/30 transition-all dark:text-amber-100 cursor-pointer"
+                      className="w-full appearance-none p-3 rounded-xl bg-amber-50/50 dark:bg-black/20 border border-amber-100 dark:border-white/5 text-xs outline-none focus:ring-2 focus:ring-amber-500/30 transition-all dark:text-amber-100 cursor-pointer"
                     >
                       {getDynamicImageModelsList(provider).map((m: string) => (
                         <option key={m} value={m}>{m.split('/').pop()?.replace(':free', '') || m}</option>
@@ -359,14 +476,15 @@ export const ImageGenerator: React.FC = () => {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-amber-800/75 dark:text-amber-300/75 px-1">نسبة العرض</label>
+              {/* Aspect Ratio */}
+              <div className="space-y-3">
+                <label className="text-[10px] font-bold text-amber-800/60 dark:text-amber-400/60 uppercase tracking-widest px-1">نسبة العرض (Aspect Ratio)</label>
                 <div className="flex gap-2">
                   {(['1:1', '3:4', '4:3', '9:16', '16:9'] as const).map(ratio => (
                     <button
                       key={ratio}
                       onClick={() => setAspectRatio(ratio)}
-                      className={`flex-1 h-9 rounded-xl text-xs font-bold tabular-nums transition-colors border ${aspectRatio === ratio ? 'bg-amber-600 text-white border-transparent shadow-sm' : 'bg-amber-50/50 dark:bg-black/25 text-amber-800 dark:text-amber-200 border-amber-200/60 dark:border-amber-900/40 hover:bg-amber-100/70'}`}
+                      className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all border ${aspectRatio === ratio ? 'bg-amber-500 text-white border-transparent shadow-md' : 'bg-amber-50/50 dark:bg-black/20 text-amber-800 dark:text-amber-200 border-amber-100 dark:border-white/5 hover:bg-amber-100'}`}
                     >
                       {ratio}
                     </button>
@@ -378,8 +496,9 @@ export const ImageGenerator: React.FC = () => {
         </div>
 
         {/* Right Column: Preview & History */}
-        <div className="lg:col-span-7 flex flex-col gap-5 lg:min-h-0 min-h-[460px]">
-          <div className="flex-1 bg-white/95 dark:bg-[#171412]/95 rounded-2xl border border-amber-200/60 dark:border-amber-900/40 shadow-sm overflow-hidden relative flex flex-col">
+        <div className="lg:col-span-7 flex flex-col gap-6 lg:min-h-0 min-h-[500px]">
+          {/* Main Preview Area */}
+          <div className="flex-1 bg-white/90 dark:bg-[#1c1917]/90 backdrop-blur-2xl rounded-[2.5rem] border border-amber-200/50 dark:border-white/10 shadow-xl overflow-hidden relative flex flex-col">
             <AnimatePresence mode="wait">
               {previewImage ? (
                 <motion.div 
@@ -396,76 +515,71 @@ export const ImageGenerator: React.FC = () => {
                     referrerPolicy="no-referrer"
                   />
                   
-                  <div className="absolute bottom-4 right-4 left-4 flex justify-between items-end gap-3">
-                    <div className="bg-black/70 backdrop-blur-md p-3.5 rounded-xl border border-white/10 max-w-[75%]">
-                      <p className="text-white text-sm font-bold line-clamp-2 mb-0.5" dir="rtl">{previewImage.arabicSummary || previewImage.prompt}</p>
-                      <p className="text-white/55 text-[11px] font-mono truncate" dir="ltr">{previewImage.prompt}</p>
+                  {/* Floating Controls */}
+                  <div className="absolute bottom-6 right-6 left-6 flex justify-between items-end opacity-100 transition-opacity duration-300">
+                    <div className="bg-black/60 backdrop-blur-md p-4 rounded-2xl border border-white/10 max-w-[70%]">
+                      <p className="text-white text-sm font-bold line-clamp-2 mb-1" dir="rtl">{previewImage.arabicSummary || previewImage.prompt}</p>
+                      <p className="text-white/40 text-[10px] font-mono truncate" dir="ltr">{previewImage.prompt}</p>
                     </div>
                     <div className="flex flex-col gap-2">
                       <button 
-                        onClick={() => setIsExpandedPreview(true)}
-                        className="w-10 h-10 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white rounded-xl border border-white/20 flex items-center justify-center transition-colors"
-                        title="تكبير اللوحة"
-                      >
-                        <Maximize size={18} />
-                      </button>
-                      <button 
                         onClick={() => downloadImage(previewImage.url, previewImage.prompt)}
-                        className="w-10 h-10 bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-md flex items-center justify-center transition-colors"
+                        className="p-3 bg-amber-500 text-white rounded-xl shadow-lg hover:scale-110 transition-all"
                         title="تحميل الصورة"
                       >
-                        <Download size={18} />
+                        <Download size={20} />
                       </button>
                       <button 
                         onClick={() => copyToClipboard(previewImage.prompt)}
-                        className="w-10 h-10 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white rounded-xl border border-white/20 flex items-center justify-center transition-colors"
+                        className="p-3 bg-white/20 backdrop-blur-md text-white rounded-xl border border-white/20 hover:scale-110 transition-all"
                         title="نسخ الأمر"
                       >
-                        <Copy size={18} />
+                        <Copy size={20} />
                       </button>
                     </div>
                   </div>
                 </motion.div>
               ) : (
-                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
-                  <div className="w-20 h-20 bg-amber-100/80 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400">
-                    <ImageIcon size={36} />
+                <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-6">
+                  <div className="w-32 h-32 bg-amber-100 dark:bg-amber-900/20 rounded-full flex items-center justify-center text-amber-600 animate-pulse">
+                    <ImageIcon size={64} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-amber-950 dark:text-amber-100">بانتظار إبداعك</h3>
-                    <p className="text-xs sm:text-sm text-amber-800/70 dark:text-amber-300/65 max-w-xs mx-auto mt-1.5 leading-relaxed">اكتب وصفاً في المربع الجانبي واضغط على &quot;توليد اللوحة&quot; لتبدأ</p>
+                    <h3 className="text-2xl font-black text-amber-900 dark:text-amber-100">بانتظار إبداعك</h3>
+                    <p className="text-amber-800/60 dark:text-amber-400/60 max-w-xs mx-auto mt-2">اكتب وصفاً في المربع الجانبي واضغط على "توليد اللوحة" لتبدأ الرحلة الفنية</p>
                   </div>
                 </div>
               )}
             </AnimatePresence>
           </div>
 
-          <div className="h-28 flex gap-3 overflow-x-auto custom-scrollbar pb-1">
+          {/* History Strip */}
+          <div className="h-32 flex gap-4 overflow-x-auto custom-scrollbar pb-2">
             {history.map((item, idx) => (
               <div
                 key={item.timestamp}
-                className={`flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border-2 transition-all relative group cursor-pointer ${previewImage?.url === item.url ? 'border-amber-600 shadow-md' : 'border-amber-200/50 dark:border-amber-900/40 hover:border-amber-400'}`}
+                className={`flex-shrink-0 w-28 h-28 rounded-2xl overflow-hidden border-2 transition-all relative group cursor-pointer ${previewImage?.url === item.url ? 'border-amber-500 shadow-lg scale-95' : 'border-transparent hover:border-amber-300'}`}
                 onClick={() => setPreviewImage({ url: item.url, prompt: item.prompt, arabicSummary: item.arabicSummary })}
               >
                 <img src={item.url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                   <button 
                     onClick={(e) => { e.stopPropagation(); downloadImage(item.url, item.prompt); }}
-                    className="w-7 h-7 bg-white/25 hover:bg-white/40 text-white rounded-lg flex items-center justify-center transition-colors"
+                    className="p-1.5 bg-white/20 hover:bg-white/40 text-white rounded-lg backdrop-blur-sm transition-colors"
                   >
-                    <Download size={14} />
+                    <Download size={16} />
                   </button>
                   <button 
                     onClick={(e) => { e.stopPropagation(); deleteFromHistory(idx); }}
-                    className="w-7 h-7 bg-red-600/85 hover:bg-red-600 text-white rounded-lg flex items-center justify-center transition-colors"
+                    className="p-1.5 bg-red-500/80 hover:bg-red-500 text-white rounded-lg backdrop-blur-sm transition-colors"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={16} />
                   </button>
                 </div>
               </div>
             ))}
             {history.length === 0 && (
-              <div className="flex-1 flex items-center justify-center border border-dashed border-amber-200/70 dark:border-amber-900/40 rounded-2xl text-amber-800/40 dark:text-amber-200/30 text-xs font-bold">
+              <div className="flex-1 flex items-center justify-center border-2 border-dashed border-amber-200 dark:border-white/5 rounded-2xl text-amber-800/20 dark:text-white/5 text-xs font-bold">
                 سجل التوليد فارغ
               </div>
             )}
@@ -480,50 +594,46 @@ export const ImageGenerator: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 md:p-8"
+            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 md:p-12"
           >
             <button 
               onClick={() => setIsExpandedPreview(false)}
-              className="absolute top-5 right-5 w-10 h-10 text-white/75 hover:text-white transition-colors bg-white/10 rounded-xl flex items-center justify-center"
+              className="absolute top-8 right-8 p-4 text-white/60 hover:text-white transition-colors bg-white/5 rounded-full"
             >
-              <X size={20} />
+              <X size={32} />
             </button>
             
-            <div className="relative max-w-4xl w-full flex flex-col items-center justify-center gap-5">
+            <div className="relative max-w-5xl w-full h-full flex flex-col items-center justify-center gap-8">
               <img 
                 src={previewImage.url} 
                 alt={previewImage.prompt}
-                className="max-w-full max-h-[65vh] object-contain rounded-2xl shadow-2xl"
+                className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl shadow-amber-500/10"
                 referrerPolicy="no-referrer"
               />
               
-              <div className="bg-[#171412]/90 backdrop-blur-md p-5 rounded-2xl border border-white/10 w-full max-w-2xl text-center space-y-3">
-                <h3 className="text-lg font-bold text-white" dir="rtl">{previewImage.arabicSummary || "لوحة فنية ذكية"}</h3>
-                <p className="text-white/65 text-xs sm:text-sm leading-relaxed" dir="ltr">{previewImage.prompt}</p>
-                <div className="flex flex-wrap justify-center gap-2.5 pt-2">
+              <div className="bg-white/5 backdrop-blur-md p-8 rounded-3xl border border-white/10 w-full max-w-3xl text-center space-y-4">
+                <h3 className="text-2xl font-black text-white" dir="rtl">{previewImage.arabicSummary || "لوحة فنية ذكية"}</h3>
+                <p className="text-white/60 text-lg leading-relaxed" dir="ltr">{previewImage.prompt}</p>
+                <div className="flex flex-wrap justify-center gap-4 pt-4">
                   <button 
                     onClick={() => downloadImage(previewImage.url, previewImage.prompt)}
-                    className="h-10 flex items-center gap-2 px-5 bg-amber-600 text-white rounded-xl font-bold text-sm hover:bg-amber-700 transition-colors"
+                    className="flex items-center gap-3 px-8 py-4 bg-amber-500 text-white rounded-2xl font-black text-lg hover:bg-amber-600 transition-all shadow-xl shadow-amber-500/20"
                   >
-                    <Download size={16} />
+                    <Download size={24} />
                     تحميل اللوحة (PNG)
                   </button>
-                  {!previewImage.url.startsWith('data:') && (
-                    <a 
-                      href={previewImage.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="h-10 flex items-center gap-2 px-5 bg-sky-600 text-white rounded-xl font-bold text-sm hover:bg-sky-700 transition-colors"
-                    >
-                      <ExternalLink size={16} />
-                      رابط مباشر
-                    </a>
-                  )}
+                  <button 
+                    onClick={() => window.open(previewImage.url, '_blank')}
+                    className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-2xl font-black text-lg hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20"
+                  >
+                    <ExternalLink size={24} />
+                    رابط مباشر
+                  </button>
                   <button 
                     onClick={() => copyToClipboard(previewImage.prompt)}
-                    className="h-10 flex items-center gap-2 px-5 bg-white/10 text-white rounded-xl font-bold text-sm hover:bg-white/20 transition-colors border border-white/10"
+                    className="flex items-center gap-3 px-8 py-4 bg-white/10 text-white rounded-2xl font-black text-lg hover:bg-white/20 transition-all border border-white/10"
                   >
-                    <Copy size={16} />
+                    <Copy size={24} />
                     نسخ الأمر
                   </button>
                 </div>

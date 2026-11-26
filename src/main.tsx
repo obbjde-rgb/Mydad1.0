@@ -40,9 +40,8 @@ try {
   }
 }
 
-import { Component, ErrorInfo, ReactNode, StrictMode } from 'react';
+import React, { Component, ErrorInfo, ReactNode, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { AlertTriangle } from 'lucide-react';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App.tsx';
 import './index.css';
@@ -91,18 +90,18 @@ class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-[#fdf8ee] dark:bg-[#0c0a09] p-4 text-center font-sans" dir="rtl">
-          <div className="bg-white/95 dark:bg-[#171412]/95 border border-amber-200/70 dark:border-amber-900/50 rounded-2xl p-8 max-w-md shadow-xl flex flex-col items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center">
-              <AlertTriangle size={26} />
+        <div className="min-h-screen flex items-center justify-center bg-amber-50 dark:bg-stone-950 p-4 text-center font-sans" dir="rtl">
+          <div className="bg-white dark:bg-stone-900 border border-amber-200 dark:border-amber-800/40 rounded-3xl p-8 max-w-md shadow-xl flex flex-col items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center text-3xl font-bold">
+              🕌
             </div>
             <h2 className="text-xl font-bold text-amber-950 dark:text-amber-100">حدث خطأ غير متوقع</h2>
             <p className="text-sm text-amber-800/80 dark:text-amber-300/80 leading-relaxed">
-              يرجى إعادة تحميل الصفحة لاستعادة استقرار التطبيق ومتابعة القراءة.
+              يرجى إعادة تحميل الصفحة لاستعادة استقرار التطبيق واكتشاف المصحف الشريف.
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="mt-2 px-6 py-2.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-bold text-sm rounded-xl shadow-sm transition-colors"
+              className="mt-2 px-6 py-2.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-bold text-sm rounded-xl shadow-md transition-all active:scale-95"
             >
               إعادة تحميل الصفحة
             </button>

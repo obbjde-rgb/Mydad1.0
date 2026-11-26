@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Network, Search, BookOpen, Atom, Scroll, ExternalLink, X, Sparkles, Filter } from 'lucide-react';
+import { Network, Search, BookOpen, Atom, Scroll, ExternalLink, X, Sparkles, Filter, Info, ArrowUpRight } from 'lucide-react';
 
 interface GraphNode {
   id: string;
@@ -299,19 +299,23 @@ export const CosmicKnowledgeGraph: React.FC<CosmicKnowledgeGraphProps> = ({ onCl
       // Creative generation based on Arabic scientific keywords
       let verseText = "﴿إِنَّا كُلَّ شَيْءٍ خَلَقْنَاهُ بِقَدَرٍ﴾";
       let quranRef = "سورة القمر - الآية 49";
+      let linkedDesc = `ارتباط كوني معقد لـ (${discoveryTitle}) بنسب وقوانين الخلق الحكيم`;
       let linkedDetails = `يكشف العلم الحديث في ظاهرة (${discoveryTitle}) عن دقة رياضية وقوانين ضبط كونية صارمة تثبت وجود غايات وتدابير إلهية مطلقة، كما تنبأت بها آية الأقدار والمقادير الشاملة.`;
       
       if (discoveryTitle.includes("ضوء") || discoveryTitle.includes("نور") || discoveryTitle.includes("فوتون")) {
         verseText = "﴿اللَّهُ نُورُ السَّمَاوَاتِ وَالْأَرْضِ﴾";
         quranRef = "سورة النور - الآية 35";
+        linkedDesc = "الربط الفيزيائي لنظرية موجات الفوتونات وسرعة الضوء المطلقة";
         linkedDetails = "تبين الآية الكريمة أسرار النور وانتشاره ومثاله، وهو ما ينطبق في الفيزياء الحديثة مع كون الضوء هو السرعة الكونية القصوى والثابت الفيزيائي الحاكم للكون المادي كله.";
       } else if (discoveryTitle.includes("بوزون") || discoveryTitle.includes("هيغز") || discoveryTitle.includes("مادة مظلمة") || discoveryTitle.includes("طاقة")) {
         verseText = "﴿وَمَا يَعْزُبُ عَن رَّبِّكَ مِن مِّثْقَالِ ذَرَّةٍ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ﴾";
         quranRef = "سورة يونس - الآية 61";
+        linkedDesc = "حقول بوزونات هيغز والمادة الخفية الحاكمة لكتل الوجود";
         linkedDetails = "جسيمات ومادة غير مرئية تمنح العناصر كتلها وتماسكها، تعبر الآية عن شمولية العلم والتقدير الإلهي لأصغر الجسيمات دون الذرية ومثاقيلها الغامضة.";
       } else if (discoveryTitle.includes("انفجار") || discoveryTitle.includes("رتق") || discoveryTitle.includes("فتق") || discoveryTitle.includes("كون")) {
         verseText = "﴿أَنَّ السَّمَاوَاتِ وَالْأَرْضَ كَانَتَا رَتْقاً فَفَتَقْنَاهُمَا﴾";
         quranRef = "سورة الأنبياء - الآية 30";
+        linkedDesc = "الانسجام التام مع نظرية الانفجار العظيم والتوسع البدئي";
         linkedDetails = "أبلغ وأعظم توصيف علمي معجز لإنشاء الكون من نقطة متفردة أولية شديدة الكثافة تلاها فتق وتوسع مستمر.";
       }
 
@@ -385,20 +389,20 @@ export const CosmicKnowledgeGraph: React.FC<CosmicKnowledgeGraphProps> = ({ onCl
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in" dir="rtl">
-      <div className="relative w-full max-w-5xl bg-white dark:bg-[#171412] rounded-2xl shadow-2xl border border-amber-500/20 overflow-hidden flex flex-col h-[85vh]">
+      <div className="relative w-full max-w-5xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-amber-500/20 overflow-hidden flex flex-col h-[85vh]">
         
         {/* Header */}
         <div className="p-5 bg-gradient-to-r from-amber-700 via-amber-800 to-zinc-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-amber-500/20 rounded-xl border border-amber-400/30">
-              <Network className="w-6 h-6 text-amber-300" />
+            <div className="p-2.5 bg-amber-500/20 rounded-2xl border border-amber-400/30">
+              <Network className="w-6 h-6 text-amber-300 animate-pulse" />
             </div>
             <div>
-              <h2 className="text-lg sm:text-xl font-bold font-serif text-amber-100">شبكة المعرفة الكونية «QurSci-Onto Graph»</h2>
+              <h2 className="text-xl font-bold font-serif text-amber-100">شبكة المعرفة الكونية «QurSci-Onto Graph»</h2>
               <p className="text-xs text-amber-200/80">ربط تفاعلي مباشر بين النص القرآني، الأوراق العلمية (arXiv / Nature)، والتراث والتفاسير</p>
             </div>
           </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors flex items-center justify-center">
+          <button onClick={onClose} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -441,7 +445,7 @@ export const CosmicKnowledgeGraph: React.FC<CosmicKnowledgeGraphProps> = ({ onCl
             <div className="flex items-center gap-1.5 w-full md:w-auto">
               <input
                 type="text"
-                placeholder="أدخل مصطلحاً علمياً (مثال: الثقوب السوداء، سرعة الضوء)..."
+                placeholder="أدخل مصلحاً علمياً (مثال: الثقوب السوداء، سرعة الضوء)..."
                 value={customDiscovery}
                 onChange={(e) => setCustomDiscovery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleGenerateCustomDiscovery()}
@@ -547,14 +551,15 @@ export const CosmicKnowledgeGraph: React.FC<CosmicKnowledgeGraphProps> = ({ onCl
                     onClick={() => setSelectedNode(node)}
                     className="cursor-pointer transition-transform hover:scale-110"
                   >
-                    {/* Selection highlight ring */}
+                    {/* Pulsing ring for selected node */}
                     {isSelected && (
                       <circle
-                        r="26"
+                        r="28"
                         fill="none"
                         stroke={nodeColor}
-                        strokeWidth="1.5"
-                        opacity="0.45"
+                        strokeWidth="2"
+                        opacity="0.6"
+                        className="animate-ping"
                       />
                     )}
 
@@ -601,8 +606,8 @@ export const CosmicKnowledgeGraph: React.FC<CosmicKnowledgeGraphProps> = ({ onCl
                     {getNodeIcon(selectedNode.type)}
                   </span>
                   <div>
-                    <span className="text-[11px] font-bold text-zinc-500 block">
-                      {selectedNode.type === 'verse' ? 'آية قرآنية' : selectedNode.type === 'science' ? 'ورقة بحثية موثوقة' : selectedNode.type === 'manuscript' ? 'مخطوطة تاريخية' : 'تفسير إسلامي'}
+                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">
+                      {selectedNode.type === 'verse' ? 'آية قرطبية' : selectedNode.type === 'science' ? 'ورقة بحثية موثوقة' : selectedNode.type === 'manuscript' ? 'مخطوطة تاريخية' : 'تفسير إسلامي'}
                     </span>
                     <h3 className="text-base font-bold font-serif text-zinc-900 dark:text-zinc-100">{selectedNode.title}</h3>
                   </div>
