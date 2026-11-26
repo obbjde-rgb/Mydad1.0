@@ -25,7 +25,7 @@ export const GeminiLiveVoiceChat: React.FC<GeminiLiveVoiceChatProps> = ({
   
   const [selectedVoice, setSelectedVoice] = useState<string>('Zephyr');
   const [selectedModel, setSelectedModel] = useState<string>('gemini-3.1-flash-live-preview');
-  const [availableLiveModels, setAvailableLiveModels] = useState<string[]>([
+  const [, setAvailableLiveModels] = useState<string[]>([
     'gemini-3.1-flash-live-preview',
     'gemini-2.5-flash-native-audio-latest',
     'gemini-3.5-live-translate-preview'
@@ -63,12 +63,12 @@ export const GeminiLiveVoiceChat: React.FC<GeminiLiveVoiceChatProps> = ({
   const animationFrameRef = useRef<number | null>(null);
 
   const [textInput, setTextInput] = useState<string>('');
-  const [micPermissionDenied, setMicPermissionDenied] = useState<boolean>(false);
+  const [, setMicPermissionDenied] = useState<boolean>(false);
 
   // Fallback MediaRecorder for non-websocket REST mode
   const mediaRecorderRestRef = useRef<MediaRecorder | null>(null);
   const audioChunksRestRef = useRef<Blob[]>([]);
-  const [isRestRecording, setIsRestRecording] = useState<boolean>(false);
+  const [, setIsRestRecording] = useState<boolean>(false);
 
   // Check and auto-update available live models from server
   useEffect(() => {
@@ -469,13 +469,13 @@ export const GeminiLiveVoiceChat: React.FC<GeminiLiveVoiceChatProps> = ({
 
   const startScreenSharing = async () => {
     if (connectionMode !== 'websocket') {
-      alert("ميزة مشاركة الشاشة متاحة فقط في وضع Gemini Live. جاري التحويل...");
+      setErrorMessage("ميزة مشاركة الشاشة متاحة فقط في وضع Gemini Live. جاري التحويل...");
       startLiveSession();
       return;
     }
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-      alert("عذراً، متصفحك أو جهازك لا يدعم مشاركة الشاشة حالياً. يرجى استخدام متصفح حديث على الحاسوب للحصول على أفضل تجربة.");
+      setErrorMessage("عذراً، متصفحك أو جهازك لا يدعم مشاركة الشاشة حالياً. يرجى استخدام متصفح حديث على الحاسوب.");
       return;
     }
 
@@ -531,7 +531,7 @@ export const GeminiLiveVoiceChat: React.FC<GeminiLiveVoiceChatProps> = ({
     } catch (err) {
       console.error("Error sharing screen:", err);
       setIsScreenSharing(false);
-      alert("تعذر البدء بمشاركة الشاشة: قد لا يدعم متصفحك أو جهازك مشاركة الشاشة في هذا الوضع. حاول من الحاسوب.");
+      setErrorMessage("تعذر البدء بمشاركة الشاشة: قد لا يدعم متصفحك أو جهازك مشاركة الشاشة في هذا الوضع.");
     }
   };
 
@@ -751,8 +751,8 @@ export const GeminiLiveVoiceChat: React.FC<GeminiLiveVoiceChatProps> = ({
         title="انقر للاستعادة الفورية"
       >
         <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
-          <Radio className="w-5 h-5 animate-pulse" />
-          <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
+          <Radio className="w-5 h-5" />
+          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-500" />
         </div>
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
@@ -773,18 +773,18 @@ export const GeminiLiveVoiceChat: React.FC<GeminiLiveVoiceChatProps> = ({
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/80 backdrop-blur-lg animate-fade-in" dir="rtl">
-      <div className="relative w-full max-w-2xl bg-zinc-900 border border-amber-500/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+      <div className="relative w-full max-w-2xl bg-zinc-900 border border-amber-500/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
         
         {/* Header */}
         <div className="p-5 bg-gradient-to-r from-amber-950 via-zinc-900 to-emerald-950 border-b border-amber-500/20 flex items-center justify-between text-white">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-amber-500/20 border border-amber-400/30 text-amber-300">
-              <Radio className="w-6 h-6 animate-pulse text-amber-400" />
+            <div className="p-2.5 rounded-xl bg-amber-500/20 border border-amber-400/30 text-amber-300">
+              <Radio className="w-6 h-6 text-amber-400" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold font-serif text-amber-100">محادثة Gemini Live المباشرة</h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                <h2 className="text-lg sm:text-xl font-bold font-serif text-amber-100">محادثة Gemini Live المباشرة</h2>
+                <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
                   <Zap className="w-3 h-3 text-amber-400" />
                   <span>{connectionMode === 'websocket' ? 'بث صوتي ثنائي الاتجاه' : 'المحرك الصوتي المباشر'}</span>
                 </span>
@@ -796,13 +796,13 @@ export const GeminiLiveVoiceChat: React.FC<GeminiLiveVoiceChatProps> = ({
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setIsMinimized(true)} 
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-zinc-300 transition-colors"
-              title="تصغير للعمل في الخلفية مع إمكانية العودة بنقرة زر"
+              className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-zinc-300 transition-colors flex items-center justify-center"
+              title="تصغير للعمل في الخلفية"
             >
-              <Minimize2 className="w-5 h-5" />
+              <Minimize2 className="w-4 h-4" />
             </button>
-            <button onClick={onClose} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-zinc-300 transition-colors" title="إغلاق وإنهاء الجلسة">
-              <X className="w-5 h-5" />
+            <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-zinc-300 transition-colors flex items-center justify-center" title="إغلاق وإنهاء الجلسة">
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -823,8 +823,8 @@ export const GeminiLiveVoiceChat: React.FC<GeminiLiveVoiceChatProps> = ({
           </div>
 
           {/* Connection badge */}
-          <div className="absolute top-2 right-2 flex items-center gap-1.5 px-2 py-1 rounded-full bg-zinc-800/80 border border-zinc-700 backdrop-blur-md">
-            <span className={`w-2 h-2 rounded-full ${connectionState === 'connected' ? 'bg-emerald-500 animate-ping' : connectionState === 'connecting' ? 'bg-amber-500 animate-pulse' : 'bg-rose-500'}`} />
+          <div className="absolute top-2 right-2 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-800/80 border border-zinc-700 backdrop-blur-md">
+            <span className={`w-2 h-2 rounded-full ${connectionState === 'connected' ? 'bg-emerald-500' : connectionState === 'connecting' ? 'bg-amber-500' : 'bg-rose-500'}`} />
             <span className="text-[10px] font-bold text-zinc-300">
               {connectionState === 'connected' 
                 ? (isSpeaking ? 'يتحدث...' : isListening ? 'يستمع...' : 'متصل') 
@@ -900,7 +900,7 @@ export const GeminiLiveVoiceChat: React.FC<GeminiLiveVoiceChatProps> = ({
 
           {transcripts.length === 0 && !currentModelText && !interimUserSpeech && (
             <div className="h-full flex flex-col items-center justify-center text-center p-6 text-zinc-500">
-              <Waves className="w-8 h-8 text-amber-500/40 animate-pulse mb-2" />
+              <Waves className="w-8 h-8 text-amber-500/40 mb-2" />
               <p className="text-xs">تحدث مباشرة مع «مداد الرحمن» بصوتك أو اكتب سؤالك بالأسفل. سيظهر التفريغ والرد الصوتي المباشر لحظياً.</p>
             </div>
           )}

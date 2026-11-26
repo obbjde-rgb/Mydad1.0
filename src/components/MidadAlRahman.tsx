@@ -1,23 +1,18 @@
-import React, { useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Send, Sparkles, X, Book, Volume2, StopCircle, Copy, Share2, 
+  Sparkles, X, Book, Volume2, Copy, 
   RefreshCw, Settings, History, Trash2, ChevronRight, Check,
-  Cpu, Zap, Brain, ShieldCheck, MessageSquare, Search, Download, Upload, Mic, MicOff,
-  Sliders, Info, AudioLines, Image as ImageIcon, HelpCircle, ArrowDown,
-  Heart, Users, Leaf, Lightbulb, ShieldAlert, BookOpen, Pin, Edit2, Calendar, Loader2, Globe, Compass, Radio, Telescope,
+  Cpu, Zap, Brain, ShieldCheck, MessageSquare, Search, Download, Upload, Mic,
+  Sliders, Image as ImageIcon, HelpCircle, ArrowDown,
+  Lightbulb, ShieldAlert, BookOpen, Pin, Edit2, Calendar, Loader2, Globe, Compass, Radio, Telescope,
   Minimize2, Maximize2, ChevronLeft
 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { MessageList } from './chat/MessageList';
 import { ChatInput, ChatInputRef } from './chat/ChatInput';
-import { SUGGESTIONS } from './chat/data';
-import { callAIWithFailover, callAI, AIMessage, AI_PROVIDERS, AIProviderKey, generateRecitation, generateRecitationStream, transcribeAudio, callAIStream, getDynamicModelsList, fetchAndUpdateModels, fetchAllProvidersModels, startDeepResearch, getDeepResearchStatus, generateContextualSuggestions } from '../services/aiService';
-import { safeLocalStorageSet, safeLocalStorageGet, extractQuranNavigationDetails } from '../lib/utils';
+import { callAIWithFailover, callAI, AIMessage, AI_PROVIDERS, AIProviderKey, generateRecitationStream, transcribeAudio, callAIStream, getDynamicModelsList, fetchAllProvidersModels, startDeepResearch, getDeepResearchStatus, generateContextualSuggestions } from '../services/aiService';
+import { safeLocalStorageSet, safeLocalStorageGet } from '../lib/utils';
 import { saveAudioToCache, getAudioFromCache } from '../lib/audioCache';
-import { saveImageToCache, getImageFromCache } from '../lib/imageCache';
-import { AdvancedReadAloud } from './AdvancedReadAloud';
 import { TajweedVoiceAnalyzer } from './widgets/TajweedVoiceAnalyzer';
 import { CosmicKnowledgeGraph } from './widgets/CosmicKnowledgeGraph';
 import { PhysicsCosmosSandbox } from './widgets/PhysicsCosmosSandbox';
@@ -37,7 +32,6 @@ interface ChatHistory {
 const globalAudioUrls: Record<string, string> = {};
 
 // Components and data moved to ./chat/ subdirectory
-const EmptyBlock = () => null;
 
 export const MidadAlRahman = React.memo(({ 
   onClose, 
@@ -243,7 +237,7 @@ export const MidadAlRahman = React.memo(({
   const [quotaError, setQuotaError] = useState<string | null>(null);
   const [isUpdatingModels, setIsUpdatingModels] = useState(false);
   const [modelsUpdatedMessage, setModelsUpdatedMessage] = useState<string | null>(null);
-  const [modelsVersion, setModelsVersion] = useState(0);
+  const [, setModelsVersion] = useState(0);
 
   const handleRefreshModels = async () => {
     setIsUpdatingModels(true);
@@ -384,12 +378,14 @@ export const MidadAlRahman = React.memo(({
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveMessagesImmediately(latestMessages.current, latestChatId.current);
     };
   }, []);
 
   useEffect(() => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    
+
     saveTimeoutRef.current = setTimeout(() => {
       saveMessagesImmediately(messages, currentChatId);
     }, 1000);
@@ -397,8 +393,6 @@ export const MidadAlRahman = React.memo(({
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
-        // Force immediate save on cleanup
-        saveMessagesImmediately(latestMessages.current, latestChatId.current);
       }
     };
   }, [messages, currentChatId]);
@@ -525,26 +519,31 @@ export const MidadAlRahman = React.memo(({
     }
   };
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+  const handleChatScroll = () => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const { scrollTop, scrollHeight, clientHeight } = el;
     const atBottom = scrollHeight - scrollTop - clientHeight < 100;
     isAtBottom.current = atBottom;
-    setShowScrollButton(!atBottom && scrollHeight > clientHeight);
-    
-    // Calculate scroll progress
-    const winScroll = scrollTop;
+    const nextShow = !atBottom && scrollHeight > clientHeight;
+    setShowScrollButton(prev => (prev !== nextShow ? nextShow : prev));
     const height = scrollHeight - clientHeight;
-    const scrolled = height > 0 ? (winScroll / height) * 100 : 0;
-    setScrollProgress(scrolled);
+    const nextProgress = height > 0 ? Math.round((scrollTop / height) * 100) : 0;
+    setScrollProgress(prev => (prev !== nextProgress ? nextProgress : prev));
   };
 
   const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
     requestAnimationFrame(() => {
-      if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTo({
-          top: scrollContainerRef.current.scrollHeight,
-          behavior
-        });
+      const el = scrollContainerRef.current;
+      if (el) {
+        if (behavior === 'auto') {
+          el.scrollTop = el.scrollHeight;
+        } else {
+          el.scrollTo({
+            top: el.scrollHeight,
+            behavior
+          });
+        }
       } else if (messagesEndRef.current) {
         messagesEndRef.current.scrollIntoView({ behavior });
       }
@@ -1833,331 +1832,248 @@ ${response.content}`;
         initial={{ opacity: 0 }} 
         animate={{ opacity: 1 }} 
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md"
-        onClick={onClose}
+        className="fixed inset-0 z-[100] bg-[#fcfaf7] dark:bg-[#0c0a09] flex flex-col overflow-hidden"
+        aria-label="واجهة مداد الرحمن"
+        role="dialog"
       >
-        <motion.div 
-          initial={{ opacity: 0, scale: 1, y: 0 }} 
-          animate={{ opacity: 1, scale: 1, y: 0 }} 
-          exit={{ opacity: 0, scale: 1, y: 0 }}
-          onClick={(e) => e.stopPropagation()}
-          className="w-full h-[100dvh] sm:w-[98vw] sm:h-[98vh] max-w-none bg-[#fcfaf7] dark:bg-[#0c0a09] flex flex-col overflow-hidden sm:rounded-2xl shadow-2xl border border-amber-100/50 dark:border-amber-900/30 relative"
-          aria-label="واجهة مداد الرحمن"
-          role="dialog"
+        <div 
+          className="w-full h-[100dvh] flex flex-col overflow-hidden relative"
         >
-        {/* Floating Zen Mode Restore & Exit Buttons */}
+        {/* Clean non-overlapping Zen Mode top bar */}
         {isZenMode && (
-          <div className="absolute top-4 left-4 right-4 z-50 flex items-center justify-between pointer-events-none">
-            <motion.button
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
+          <div className="h-11 px-3 sm:px-4 flex items-center justify-between border-b border-amber-200/30 dark:border-amber-900/30 bg-white/85 dark:bg-[#141210]/85 backdrop-blur-md shrink-0 z-40">
+            <button
               onClick={onClose}
-              className="pointer-events-auto p-2.5 rounded-full bg-white/95 dark:bg-[#1c1917]/95 backdrop-blur-md border border-amber-200/50 dark:border-amber-800/50 text-amber-900 dark:text-amber-100 shadow-lg hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-all hover:scale-105 flex items-center gap-2 text-xs font-bold font-kufi"
+              className="h-8 px-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-900 dark:text-amber-100 transition-colors flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap shrink-0"
               title="الرجوع للصفحة الرئيسية"
             >
-              <ChevronLeft size={16} className="text-amber-600" />
+              <ChevronLeft size={14} className="text-amber-600" />
               <span>الرئيسية</span>
-            </motion.button>
+            </button>
 
-            <motion.button
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
+            <span className="text-xs font-bold text-amber-900/80 dark:text-amber-100/80 font-kufi truncate">مداد الرحمن</span>
+
+            <button
               onClick={() => setIsZenMode(false)}
-              className="pointer-events-auto p-2.5 rounded-full bg-white/95 dark:bg-[#1c1917]/95 backdrop-blur-md border border-amber-200/50 dark:border-amber-800/50 text-amber-900 dark:text-amber-100 shadow-lg hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-all hover:scale-105 flex items-center gap-2 text-xs font-bold font-kufi"
-              title="إظهار الهيكل (إلغاء الوضع البسيط)"
+              className="h-8 px-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-900 dark:text-amber-100 transition-colors flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap shrink-0"
+              title="إظهار الأدوات"
             >
-              <Maximize2 size={15} className="text-amber-600 animate-pulse" />
-              <span>إظهار الهيكل</span>
-            </motion.button>
+              <Maximize2 size={13} className="text-amber-600" />
+              <span>الأدوات</span>
+            </button>
           </div>
         )}
 
         {/* Header */}
         {!isZenMode && (
-          <div className="h-14 flex items-center justify-between px-4 bg-white/80 dark:bg-[#1c1917]/80 backdrop-blur-md border-b border-amber-200/50 dark:border-amber-800/50 sticky top-0 z-40 shrink-0">
+          <div className="h-12 flex items-center justify-between px-2.5 sm:px-4 bg-white/90 dark:bg-[#141210]/90 backdrop-blur-md border-b border-amber-200/40 dark:border-amber-900/40 sticky top-0 z-40 shrink-0 gap-2">
             <div 
               onClick={() => scrollToTop('smooth')}
-              className="flex items-center gap-2 cursor-pointer hover:opacity-85 transition-all select-none shrink-0"
-              title="انقر للتمرير السريع للأعلى"
+              className="flex items-center gap-1.5 cursor-pointer hover:opacity-85 transition-opacity select-none shrink-0"
+              title="انقر للتمرير للأعلى"
             >
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowHistory(!showHistory);
                 }}
-                className={`p-2 rounded-xl transition-all ${showHistory ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-100' : 'hover:bg-amber-50 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}
+                className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${showHistory ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-100' : 'hover:bg-amber-50 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}
                 title="السجل"
               >
-                <History size={18} />
+                <History size={16} />
               </button>
-              <div className="flex flex-col">
-                <h2 className="text-sm sm:text-base font-bold text-amber-900 dark:text-amber-100 font-kufi leading-none">مداد الرحمن</h2>
-                <span className="text-[9px] text-amber-600/70 dark:text-amber-400/70 font-bold tracking-tight">بحر الكلمات لا ينفد</span>
-              </div>
+              <h2 className="text-sm font-bold text-amber-900 dark:text-amber-100 font-kufi whitespace-nowrap">مداد الرحمن</h2>
             </div>
             
-            <div className="relative flex-1 min-w-0 flex items-center h-full mx-2 overflow-hidden">
-              {/* Right Arrow (Scroll back to start - right side in RTL) */}
+            <div className="relative flex-1 min-w-0 flex items-center h-full overflow-hidden">
               {showRightArrow && (
                 <button
                   onClick={() => scrollTopBar('right')}
-                  className="absolute right-0 z-30 p-1.5 rounded-full bg-white/95 dark:bg-[#1c1917]/95 shadow-md border border-amber-200/50 dark:border-amber-800/50 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/40 transition-all hover:scale-105"
+                  className="absolute right-0 z-30 w-6 h-6 flex items-center justify-center rounded-full bg-white/95 dark:bg-[#1c1917]/95 shadow-sm border border-amber-200/50 dark:border-amber-800/50 text-amber-700 dark:text-amber-300"
                   style={{ top: '50%', transform: 'translateY(-50%)' }}
                   title="التمرير لليمين"
                 >
-                  <ChevronRight size={14} className="stroke-[3]" />
+                  <ChevronRight size={13} />
                 </button>
               )}
 
-              {/* Scrollable Buttons Row */}
+              {/* Scrollable Compact Tools Row */}
               <div 
                 ref={topBarRef}
-                className="w-full flex items-center justify-start overflow-x-auto sm:scrollbar-none flex-nowrap whitespace-nowrap gap-1.5 sm:gap-2 px-6 select-none pb-1" 
+                className="w-full flex items-center justify-start overflow-x-auto hide-scrollbar flex-nowrap whitespace-nowrap gap-1 px-2 select-none" 
                 style={{ scrollBehavior: 'smooth', WebkitOverflowScrolling: 'touch' }}
               >
                 <button
                   onClick={() => setShowLiveVoiceChat(true)}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white text-xs font-bold transition-all shadow-md animate-pulse border border-amber-400/30 shrink-0"
-                  title="محادثة Gemini Live المباشرة صوتياً لحظة بلحظة"
+                  className="h-7 flex items-center gap-1 px-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-semibold transition-colors shrink-0 whitespace-nowrap"
+                  title="محادثة صوتية مباشرة"
                 >
-                  <Radio size={14} className="text-amber-200 animate-spin-slow" />
-                  <span>Gemini Live المباشر</span>
+                  <Radio size={12} />
+                  <span>بث مباشر</span>
                 </button>
 
-                {/* أذن التجويد (الاستماع والتحليل) */}
-                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl transition-all border shrink-0 ${
-                  isEarEnabled 
-                    ? 'bg-amber-500/10 border-amber-500/20 text-amber-800 dark:text-amber-300' 
-                    : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-600'
-                }`}>
-                  <button
-                    onClick={() => {
-                      if (isEarEnabled) {
-                        setShowTajweedAnalyzer(true);
-                      } else {
-                        setIsEarEnabled(true);
-                        setShowTajweedAnalyzer(true);
-                      }
-                    }}
-                    className="flex items-center gap-1 text-xs font-bold font-kufi transition-all"
-                    title="مُحلل التجويد والمخارج الصوتي (أذن مداد)"
-                  >
-                    <Mic size={14} className={isEarEnabled ? 'text-amber-600' : 'text-zinc-400'} />
-                    <span>أذن التجويد</span>
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const next = !isEarEnabled;
-                      setIsEarEnabled(next);
-                      if (!next) setShowTajweedAnalyzer(false);
-                    }}
-                    className={`w-7 h-4 rounded-full p-0.5 transition-colors duration-200 ${isEarEnabled ? 'bg-amber-600' : 'bg-zinc-300 dark:bg-zinc-700'}`}
-                    title={isEarEnabled ? 'إلغاء تفعيل أذن التجويد' : 'تفعيل أذن التجويد'}
-                  >
-                    <div className={`w-3 h-3 rounded-full bg-white transition-transform duration-200 transform ${isEarEnabled ? '-translate-x-3' : 'translate-x-0'}`} />
-                  </button>
-                </div>
+                <button
+                  onClick={() => {
+                    setIsEarEnabled(true);
+                    setShowTajweedAnalyzer(true);
+                  }}
+                  className={`h-7 flex items-center gap-1 px-2.5 rounded-lg text-[11px] font-medium transition-colors border shrink-0 whitespace-nowrap ${
+                    isEarEnabled 
+                      ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200/60 dark:border-amber-800/50 text-amber-800 dark:text-amber-300' 
+                      : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-500'
+                  }`}
+                  title="محلل التجويد الصوتي"
+                >
+                  <Mic size={12} />
+                  <span>التجويد</span>
+                </button>
 
-                {/* شبكة المعرفة الكونية */}
-                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl transition-all border shrink-0 ${
-                  isNetworkEnabled 
-                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-800 dark:text-emerald-300' 
-                    : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-600'
-                }`}>
-                  <button
-                    onClick={() => {
-                      if (isNetworkEnabled) {
-                        setShowCosmicGraph(true);
-                      } else {
-                        setIsNetworkEnabled(true);
-                        setShowCosmicGraph(true);
-                      }
-                    }}
-                    className="flex items-center gap-1 text-xs font-bold font-kufi transition-all"
-                    title="شبكة المعرفة الكونية (QurSci-Onto Graph)"
-                  >
-                    <Globe size={14} className={isNetworkEnabled ? 'text-emerald-600' : 'text-zinc-400'} />
-                    <span>شبكة المعرفة</span>
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const next = !isNetworkEnabled;
-                      setIsNetworkEnabled(next);
-                      if (!next) setShowCosmicGraph(false);
-                    }}
-                    className={`w-7 h-4 rounded-full p-0.5 transition-colors duration-200 ${isNetworkEnabled ? 'bg-emerald-600' : 'bg-zinc-300 dark:bg-zinc-700'}`}
-                    title={isNetworkEnabled ? 'إلغاء تفعيل شبكة المعرفة' : 'تفعيل شبكة المعرفة'}
-                  >
-                    <div className={`w-3 h-3 rounded-full bg-white transition-transform duration-200 transform ${isNetworkEnabled ? '-translate-x-3' : 'translate-x-0'}`} />
-                  </button>
-                </div>
+                <button
+                  onClick={() => {
+                    setIsNetworkEnabled(true);
+                    setShowCosmicGraph(true);
+                  }}
+                  className={`h-7 flex items-center gap-1 px-2.5 rounded-lg text-[11px] font-medium transition-colors border shrink-0 whitespace-nowrap ${
+                    isNetworkEnabled 
+                      ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200/60 dark:border-emerald-800/50 text-emerald-800 dark:text-emerald-300' 
+                      : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-500'
+                  }`}
+                  title="شبكة المعرفة الكونية"
+                >
+                  <Globe size={12} />
+                  <span>المعرفة</span>
+                </button>
 
-                {/* مختبر الفيزياء والكون */}
-                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl transition-all border shrink-0 ${
-                  isSandboxEnabled 
-                    ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-800 dark:text-indigo-300' 
-                    : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-600'
-                }`}>
-                  <button
-                    onClick={() => {
-                      if (isSandboxEnabled) {
-                        setShowPhysicsSandbox(true);
-                      } else {
-                        setIsSandboxEnabled(true);
-                        setShowPhysicsSandbox(true);
-                      }
-                    }}
-                    className="flex items-center gap-1 text-xs font-bold font-kufi transition-all"
-                    title="مختبر المحاكاة التفاعلي (Physics & Cosmos Sandbox)"
-                  >
-                    <Compass size={14} className={isSandboxEnabled ? 'text-indigo-600' : 'text-zinc-400'} />
-                    <span>مختبر الفيزياء</span>
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const next = !isSandboxEnabled;
-                      setIsSandboxEnabled(next);
-                      if (!next) setShowPhysicsSandbox(false);
-                    }}
-                    className={`w-7 h-4 rounded-full p-0.5 transition-colors duration-200 ${isSandboxEnabled ? 'bg-indigo-600' : 'bg-zinc-300 dark:bg-zinc-700'}`}
-                    title={isSandboxEnabled ? 'إلغاء تفعيل مختبر الفيزياء' : 'تفعيل مختبر الفيزياء'}
-                  >
-                    <div className={`w-3 h-3 rounded-full bg-white transition-transform duration-200 transform ${isSandboxEnabled ? '-translate-x-3' : 'translate-x-0'}`} />
-                  </button>
-                </div>
+                <button
+                  onClick={() => {
+                    setIsSandboxEnabled(true);
+                    setShowPhysicsSandbox(true);
+                  }}
+                  className={`h-7 flex items-center gap-1 px-2.5 rounded-lg text-[11px] font-medium transition-colors border shrink-0 whitespace-nowrap ${
+                    isSandboxEnabled 
+                      ? 'bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200/60 dark:border-indigo-800/50 text-indigo-800 dark:text-indigo-300' 
+                      : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-500'
+                  }`}
+                  title="مختبر الفيزياء والكون"
+                >
+                  <Compass size={12} />
+                  <span>الفيزياء</span>
+                </button>
 
-                {/* المحلل اللغوي الميكرو-دلالي */}
                 <button
                   onClick={() => setShowSemanticPrecision(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 text-xs font-bold font-kufi transition-all shrink-0"
-                  title="محلل الفروق اللغوية الدقيقة (Semantic Micro-Precision)"
+                  className="h-7 flex items-center gap-1 px-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/50 hover:bg-amber-100/70 text-amber-800 dark:text-amber-300 text-[11px] font-medium transition-colors shrink-0 whitespace-nowrap"
+                  title="المحلل اللغوي الدقيق"
                 >
-                  <Book size={14} className="text-amber-600 dark:text-amber-400" />
-                  <span>المحلل اللغوي الدقيق</span>
+                  <Book size={12} />
+                  <span>اللغوي</span>
                 </button>
 
-                {/* البث الفلكي والمطابقة النصية */}
                 <button
                   onClick={() => setShowCosmicObservatory(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-xs font-bold font-kufi transition-all shrink-0"
-                  title="البث الكوني المباشر وبنك البيانات (Cosmic Observatory)"
+                  className="h-7 flex items-center gap-1 px-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/50 hover:bg-emerald-100/70 text-emerald-800 dark:text-emerald-300 text-[11px] font-medium transition-colors shrink-0 whitespace-nowrap"
+                  title="البث الفلكي"
                 >
-                  <Telescope size={14} className="text-emerald-600 dark:text-emerald-400" />
-                  <span>البث الفلكي</span>
+                  <Telescope size={12} />
+                  <span>الفلك</span>
                 </button>
 
-                {/* أدوات الميزات السريعة */}
                 <button
                   onClick={() => onToolCall?.('control_app', 'open_feature', { feature: 'qibla' })}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 text-blue-800 dark:text-blue-300 text-xs font-bold font-kufi transition-all shrink-0"
+                  className="h-7 flex items-center gap-1 px-2 rounded-lg hover:bg-amber-100/60 dark:hover:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-[11px] font-medium transition-colors shrink-0 whitespace-nowrap"
                   title="اتجاه القبلة"
                 >
-                  <Compass size={14} className="text-blue-600" />
+                  <Compass size={12} />
                   <span>القبلة</span>
                 </button>
+
                 <button
                   onClick={() => onToolCall?.('control_app', 'open_feature', { feature: 'prayer_times' })}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 text-purple-800 dark:text-purple-300 text-xs font-bold font-kufi transition-all shrink-0"
+                  className="h-7 flex items-center gap-1 px-2 rounded-lg hover:bg-amber-100/60 dark:hover:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-[11px] font-medium transition-colors shrink-0 whitespace-nowrap"
                   title="مواقيت الصلاة"
                 >
-                  <Calendar size={14} className="text-purple-600" />
+                  <Calendar size={12} />
                   <span>المواقيت</span>
                 </button>
+
                 <button
                   onClick={() => onToolCall?.('control_app', 'open_feature', { feature: 'tasbih' })}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 text-rose-800 dark:text-rose-300 text-xs font-bold font-kufi transition-all shrink-0"
+                  className="h-7 flex items-center gap-1 px-2 rounded-lg hover:bg-amber-100/60 dark:hover:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-[11px] font-medium transition-colors shrink-0 whitespace-nowrap"
                   title="المسبحة الإلكترونية"
                 >
-                  <RefreshCw size={14} className="text-rose-600" />
+                  <RefreshCw size={12} />
                   <span>التسبيح</span>
                 </button>
 
-                {/* توليد الصور داخل المحادثة */}
-                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl transition-all border shrink-0 ${
-                  enableSpiritualImage 
-                    ? 'bg-purple-500/10 border-purple-500/20 text-purple-800 dark:text-purple-300' 
-                    : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-600'
-                }`}>
-                  <div className="flex items-center gap-1 text-xs font-bold font-kufi transition-all">
-                    <span>🖼️</span>
-                    <span>توليد الصور</span>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEnableSpiritualImage(!enableSpiritualImage);
-                    }}
-                    className={`w-7 h-4 rounded-full p-0.5 transition-colors duration-200 ${enableSpiritualImage ? 'bg-purple-600' : 'bg-zinc-300 dark:bg-zinc-700'}`}
-                    title={enableSpiritualImage ? 'إلغاء تفعيل توليد الصور' : 'تفعيل توليد الصور'}
-                  >
-                    <div className={`w-3 h-3 rounded-full bg-white transition-transform duration-200 transform ${enableSpiritualImage ? '-translate-x-3' : 'translate-x-0'}`} />
-                  </button>
-                </div>
-
-                <div className="w-px h-4 bg-amber-200/50 dark:bg-amber-800/50 mx-0.5 shrink-0"></div>
-                
-                <button 
-                  onClick={() => setIsZenMode(true)}
-                  className="p-2 rounded-xl transition-all hover:bg-amber-50 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-400 shrink-0"
-                  title="الوضع البسيط (تركيز كامل وإخفاء الهيكل)"
+                <button
+                  onClick={() => setEnableSpiritualImage(!enableSpiritualImage)}
+                  className={`h-7 flex items-center gap-1 px-2.5 rounded-lg text-[11px] font-medium transition-colors border shrink-0 whitespace-nowrap ${
+                    enableSpiritualImage
+                      ? 'bg-purple-600 border-purple-600 text-white'
+                      : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400'
+                  }`}
+                  title={enableSpiritualImage ? 'إيقاف توليد الصور' : 'تفعيل توليد الصور'}
                 >
-                  <Minimize2 size={18} />
-                </button>
-                <button 
-                  onClick={() => setShowSettings(!showSettings)}
-                  className={`p-2 rounded-xl transition-all shrink-0 ${showSettings ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-100' : 'hover:bg-amber-50 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}
-                  title="إعدادات"
-                >
-                  <Settings size={18} />
-                </button>
-                
-                <div className="w-px h-4 bg-amber-200/50 dark:bg-amber-800/50 mx-1 shrink-0"></div>
-                
-                <button 
-                  onClick={handleReadAllRecitation}
-                  className={`p-2 rounded-xl transition-all shrink-0 ${isGeneratingAudio === 'all' ? 'text-amber-900 animate-pulse' : 'text-amber-700'}`}
-                  title="قراءة الكل"
-                >
-                  <Volume2 size={18} />
-                </button>
-                <button 
-                  onClick={copyChatAsMarkdown}
-                  className="p-2 text-amber-700 hover:text-amber-900 shrink-0"
-                  title="نسخ الكل"
-                >
-                  <Copy size={18} />
-                </button>
-                <button 
-                  onClick={() => setShowClearConfirm(true)}
-                  className="p-2 text-red-500 hover:text-red-600 shrink-0"
-                  title="مسح"
-                >
-                  <Trash2 size={18} />
-                </button>
-                <button 
-                  onClick={onClose}
-                  className="ml-1 p-1 px-2 rounded-lg bg-amber-100/50 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100 border border-amber-200/50 font-bold text-xs shrink-0"
-                >
-                  إغلاق
+                  <ImageIcon size={12} />
+                  <span>صور</span>
                 </button>
               </div>
 
-              {/* Left Arrow (Scroll further to left - end side in RTL) */}
               {showLeftArrow && (
                 <button
                   onClick={() => scrollTopBar('left')}
-                  className="absolute left-0 z-30 p-1.5 rounded-full bg-white/95 dark:bg-[#1c1917]/95 shadow-md border border-amber-200/50 dark:border-amber-800/50 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/40 transition-all hover:scale-105"
+                  className="absolute left-0 z-30 w-6 h-6 flex items-center justify-center rounded-full bg-white/95 dark:bg-[#1c1917]/95 shadow-sm border border-amber-200/50 dark:border-amber-800/50 text-amber-700 dark:text-amber-300"
                   style={{ top: '50%', transform: 'translateY(-50%)' }}
                   title="التمرير لليسار"
                 >
-                  <ChevronLeft size={14} className="stroke-[3]" />
+                  <ChevronLeft size={13} />
                 </button>
               )}
+            </div>
+
+            <div className="flex items-center gap-0.5 shrink-0">
+              <button 
+                onClick={() => setIsZenMode(true)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-400 transition-colors"
+                title="وضع القراءة الهادئة"
+              >
+                <Minimize2 size={15} />
+              </button>
+              <button 
+                onClick={() => setShowSettings(!showSettings)}
+                className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${showSettings ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-100' : 'hover:bg-amber-50 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}
+                title="الإعدادات"
+              >
+                <Settings size={15} />
+              </button>
+              <button 
+                onClick={handleReadAllRecitation}
+                className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${isGeneratingAudio === 'all' ? 'bg-amber-600 text-white' : 'hover:bg-amber-50 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}
+                title="قراءة الكل"
+              >
+                <Volume2 size={15} />
+              </button>
+              <button 
+                onClick={copyChatAsMarkdown}
+                className="hidden sm:flex w-8 h-8 items-center justify-center rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-400 transition-colors"
+                title="نسخ الكل"
+              >
+                <Copy size={15} />
+              </button>
+              <button 
+                onClick={() => setShowClearConfirm(true)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-red-500 transition-colors"
+                title="مسح المحادثة"
+              >
+                <Trash2 size={15} />
+              </button>
+              <button 
+                onClick={onClose}
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-amber-100/70 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-800/60 text-amber-900 dark:text-amber-100 transition-colors mr-0.5"
+                title="إغلاق"
+              >
+                <X size={15} />
+              </button>
             </div>
           </div>
         )}
@@ -2176,7 +2092,7 @@ ${response.content}`;
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="bg-white dark:bg-[#1c1917] w-full max-w-sm rounded-3xl p-8 shadow-2xl border border-red-100 dark:border-red-900/30 text-center"
+              className="bg-white dark:bg-[#171412] w-full max-w-sm rounded-2xl p-8 shadow-2xl border border-red-100 dark:border-red-900/30 text-center"
               onClick={e => e.stopPropagation()}
             >
               <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -2188,7 +2104,7 @@ ${response.content}`;
               <div className="flex gap-3">
                 <button 
                   onClick={() => setShowClearConfirm(false)}
-                  className="flex-1 py-3 rounded-2xl bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100 font-bold hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors"
+                  className="flex-1 py-3 rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100 font-bold hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors"
                 >
                   إلغاء
                 </button>
@@ -2201,7 +2117,7 @@ ${response.content}`;
                     localStorage.removeItem('midad_alrahman_history');
                     setShowClearConfirm(false);
                   }}
-                  className="flex-1 py-3 rounded-2xl bg-red-600 text-white font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20"
+                  className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20"
                 >
                   نعم، امسح
                 </button>
@@ -2221,7 +2137,7 @@ ${response.content}`;
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="bg-white dark:bg-[#1c1917] w-full max-w-sm rounded-3xl p-8 shadow-2xl border border-red-100 dark:border-red-900/30 text-center"
+              className="bg-white dark:bg-[#171412] w-full max-w-sm rounded-2xl p-8 shadow-2xl border border-red-100 dark:border-red-900/30 text-center"
               onClick={e => e.stopPropagation()}
             >
               <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -2233,13 +2149,13 @@ ${response.content}`;
               <div className="flex gap-3">
                 <button 
                   onClick={() => setShowClearAllConfirm(false)}
-                  className="flex-1 py-3 rounded-2xl bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100 font-bold hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors"
+                  className="flex-1 py-3 rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100 font-bold hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors"
                 >
                   إلغاء
                 </button>
                 <button 
                   onClick={clearAllHistory}
-                  className="flex-1 py-3 rounded-2xl bg-red-600 text-white font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20"
+                  className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20"
                 >
                   نعم، امسح السجل
                 </button>
@@ -2259,7 +2175,7 @@ ${response.content}`;
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="bg-white dark:bg-[#1c1917] w-full max-w-sm rounded-3xl p-8 shadow-2xl border border-amber-100 dark:border-amber-950/40 text-center"
+              className="bg-white dark:bg-[#171412] w-full max-w-sm rounded-2xl p-8 shadow-2xl border border-amber-100 dark:border-amber-950/40 text-center"
               onClick={e => e.stopPropagation()}
             >
               <div className="w-16 h-16 bg-amber-100 dark:bg-amber-950/30 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -2271,7 +2187,7 @@ ${response.content}`;
               <div className="flex gap-3">
                 <button 
                   onClick={() => setShowFactoryResetConfirm(false)}
-                  className="flex-1 py-3 rounded-2xl bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100 font-bold hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors"
+                  className="flex-1 py-3 rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100 font-bold hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors"
                 >
                   إلغاء
                 </button>
@@ -2280,7 +2196,7 @@ ${response.content}`;
                     localStorage.clear();
                     window.location.reload();
                   }}
-                  className="flex-1 py-3 rounded-2xl bg-amber-600 text-white font-bold hover:bg-amber-700 transition-colors shadow-lg shadow-amber-600/20"
+                  className="flex-1 py-3 rounded-xl bg-amber-600 text-white font-bold hover:bg-amber-700 transition-colors shadow-lg shadow-amber-600/20"
                 >
                   نعم، أعد الضبط
                 </button>
@@ -2304,7 +2220,7 @@ ${response.content}`;
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="bg-white dark:bg-[#1c1917] w-full max-w-md rounded-3xl p-8 shadow-2xl border border-amber-100 dark:border-amber-900/50 text-right"
+              className="bg-white dark:bg-[#171412] w-full max-w-md rounded-2xl p-8 shadow-2xl border border-amber-100 dark:border-amber-900/50 text-right"
               onClick={e => e.stopPropagation()}
               dir="rtl"
             >
@@ -2556,7 +2472,7 @@ ${response.content}`;
                     </button>
                   </div>
                   {modelsUpdatedMessage && (
-                    <p className="text-[10px] text-amber-700 dark:text-amber-300 mb-2 py-1 px-2 bg-amber-50 dark:bg-amber-950/20 rounded border border-amber-100 dark:border-amber-900/60 animate-pulse text-center font-medium">
+                    <p className="text-[11px] text-amber-700 dark:text-amber-300 mb-2 py-1 px-2 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-100 dark:border-amber-900/60 text-center font-medium">
                       {modelsUpdatedMessage}
                     </p>
                   )}
@@ -2679,7 +2595,7 @@ ${response.content}`;
                 </section>
 
                 <section>
-                  <label className="text-xs font-bold text-red-600 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <label className="text-xs font-bold text-red-600 mb-3 flex items-center gap-2">
                     <ShieldCheck size={14} /> تنبيه هام وتدقيق
                   </label>
                   <div className="p-3 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-100 dark:border-red-900/30 text-[10px] text-red-800 dark:text-red-200 leading-relaxed text-justify">
@@ -2690,7 +2606,7 @@ ${response.content}`;
 
                 <section>
                   <div className="flex items-center justify-between mb-3">
-                    <label className="text-xs font-bold text-amber-600 uppercase tracking-wider flex items-center gap-2">
+                    <label className="text-xs font-bold text-amber-600 flex items-center gap-2">
                       <MessageSquare size={14} /> تعليمات مخصصة
                     </label>
                     <button
@@ -2725,14 +2641,14 @@ ${response.content}`;
         <AnimatePresence>
           {showScrollButton && (
             <motion.button
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
+              exit={{ opacity: 0, y: 8 }}
               onClick={() => scrollToBottom('smooth')}
-              className="absolute bottom-32 right-8 p-3 rounded-full bg-amber-600 text-white shadow-lg hover:bg-amber-700 transition-colors z-20"
+              className="absolute bottom-24 left-4 sm:bottom-24 sm:left-6 p-2.5 rounded-xl bg-amber-600/95 text-white shadow-md hover:bg-amber-700 transition-colors z-20"
               aria-label="الانتقال لآخر الرسائل"
             >
-              <ArrowDown size={20} />
+              <ArrowDown size={16} />
             </motion.button>
           )}
         </AnimatePresence>
@@ -2773,11 +2689,10 @@ ${response.content}`;
           )}
 
           {/* Scroll Progress Bar */}
-          <div className="absolute top-0 left-0 right-0 h-0.5 bg-amber-100/20 dark:bg-amber-900/10 z-20">
-            <motion.div 
-              className="h-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]"
-              style={{ width: `${scrollProgress}%` }}
-              transition={{ type: 'spring', damping: 20, stiffness: 100 }}
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-amber-100/20 dark:bg-amber-900/10 z-20 pointer-events-none">
+            <div 
+              className="h-full w-full bg-amber-500 origin-right transition-transform duration-100"
+              style={{ transform: `scaleX(${scrollProgress / 100})` }}
             />
           </div>
           
@@ -2799,162 +2714,81 @@ ${response.content}`;
             selectedModel={selectedModel}
             providerName={AI_PROVIDERS[selectedProvider]?.name || 'Gemini'}
             isZenMode={isZenMode}
+            scrollRef={scrollContainerRef}
+            onScroll={handleChatScroll}
           />
 
           {/* Input Area */}
-          <div className={`transition-all duration-500 ${isZenMode ? 'p-3 bg-transparent border-t-0 shadow-none z-10 w-full shrink-0' : 'p-3 sm:p-4 bg-white/80 dark:bg-[#1c1917]/80 backdrop-blur-xl border-t border-amber-100/50 dark:border-amber-900/50 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] dark:shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.5)] z-10 w-full shrink-0'}`}>
-            <div className={`transition-all duration-500 w-full max-w-4xl mx-auto flex flex-col gap-2 ${isZenMode ? 'bg-white/95 dark:bg-[#171513]/95 shadow-[0_15px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)] p-1.5 rounded-3xl border border-amber-200/50 dark:border-amber-900/40 backdrop-blur-xl max-w-3xl' : ''}`}>
-              {/* Quick Suggestions Chips before input */}
-              {!isZenMode && !isLoading && (
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-hide px-2 text-xs">
-                  {currentContext?.surah && (
-                    <button
-                      onClick={() => sendMessage(`لخص لي سورة ${currentContext.surah} واشرح مقاصدها الرئيسية`)}
-                      className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-100 font-bold whitespace-nowrap hover:bg-amber-200 transition-all border border-amber-300/40 shrink-0"
+          <div className="px-2.5 py-2 sm:px-4 sm:py-2.5 bg-white/90 dark:bg-[#141210]/90 backdrop-blur-md border-t border-amber-200/40 dark:border-amber-900/40 z-10 w-full shrink-0">
+            <div className="w-full max-w-4xl lg:max-w-5xl mx-auto flex flex-col gap-1.5">
+              {/* Single Slim Quick Actions Bar */}
+              {!isZenMode && (
+                <div className={`flex items-center gap-1.5 overflow-x-auto hide-scrollbar text-[11px] pb-0.5 transition-opacity ${isLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+                  {messages.length > 1 && messages[messages.length-1].role === 'assistant' && (
+                    <button 
+                      onClick={() => sendMessage('أكثر يا مداد الرحمن')}
+                      disabled={isLoading}
+                      className="h-7 flex items-center gap-1 px-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold whitespace-nowrap shrink-0 transition-colors"
                     >
-                      <BookOpen size={13} className="text-amber-600" />
-                      <span>لخص سورة {currentContext.surah}</span>
+                      <Sparkles size={12} /> أكثر
                     </button>
                   )}
                   {currentContext?.surah && currentContext?.ayah && (
                     <button
                       onClick={() => sendMessage(`اشرح لي الآية ${currentContext.ayah} من سورة ${currentContext.surah} واستخرج اللطائف والدروس`)}
-                      className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-100 font-bold whitespace-nowrap hover:bg-amber-200 transition-all border border-amber-300/40 shrink-0"
+                      className="h-7 flex items-center gap-1 px-2.5 rounded-lg bg-amber-100/80 dark:bg-amber-900/40 text-amber-900 dark:text-amber-100 font-medium whitespace-nowrap hover:bg-amber-200/80 transition-colors shrink-0"
                     >
-                      <Sparkles size={13} className="text-amber-600" />
+                      <BookOpen size={12} />
                       <span>تفسير الآية {currentContext.ayah}</span>
                     </button>
                   )}
                   <button
                     onClick={() => sendMessage("اشرح لي هذه الآية بأسلوب تدبري واستخرج لي الدروس العملية منها")}
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white dark:bg-stone-900 text-amber-900 dark:text-amber-200 font-bold whitespace-nowrap hover:bg-amber-50 dark:hover:bg-stone-800 transition-all border border-amber-200/60 dark:border-amber-800/60 shadow-sm shrink-0"
+                    className="h-7 flex items-center gap-1 px-2.5 rounded-lg bg-amber-50 dark:bg-stone-900 text-amber-900 dark:text-amber-200 font-medium whitespace-nowrap hover:bg-amber-100 dark:hover:bg-stone-800 border border-amber-200/50 dark:border-amber-800/40 transition-colors shrink-0"
                   >
-                    <Book size={13} className="text-amber-600" />
-                    <span>شرح وتدبر الآية</span>
-                  </button>
-                  <button
-                    onClick={() => sendMessage("ما هي أسباب نزول هذه السورة والمقاصد الكبرى لها؟")}
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white dark:bg-stone-900 text-amber-900 dark:text-amber-200 font-bold whitespace-nowrap hover:bg-amber-50 dark:hover:bg-stone-800 transition-all border border-amber-200/60 dark:border-amber-800/60 shadow-sm shrink-0"
-                  >
-                    <Lightbulb size={13} className="text-amber-600" />
-                    <span>أسباب النزول والمقاصد</span>
+                    <Book size={12} />
+                    <span>تدبر</span>
                   </button>
                   <button
                     onClick={() => sendMessage("ما هي أهم أحكام التجويد واللطائف اللغوية في هذه الآية؟")}
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white dark:bg-stone-900 text-amber-900 dark:text-amber-200 font-bold whitespace-nowrap hover:bg-amber-50 dark:hover:bg-stone-800 transition-all border border-amber-200/60 dark:border-amber-800/60 shadow-sm shrink-0"
+                    className="h-7 flex items-center gap-1 px-2.5 rounded-lg bg-amber-50 dark:bg-stone-900 text-amber-900 dark:text-amber-200 font-medium whitespace-nowrap hover:bg-amber-100 dark:hover:bg-stone-800 border border-amber-200/50 dark:border-amber-800/40 transition-colors shrink-0"
                   >
-                    <ShieldAlert size={13} className="text-amber-600" />
-                    <span>أحكام التجويد والبلاغة</span>
+                    <ShieldAlert size={12} />
+                    <span>تجويد وبلاغة</span>
                   </button>
-                  <button
-                    onClick={() => sendMessage("احكِ لي القصة القرآنية والعبرة التربوية منها")}
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white dark:bg-stone-900 text-amber-900 dark:text-amber-200 font-bold whitespace-nowrap hover:bg-amber-50 dark:hover:bg-stone-800 transition-all border border-amber-200/60 dark:border-amber-800/60 shadow-sm shrink-0"
+                  <button 
+                    onClick={() => sendMessage("اقترح علي فكرة جديدة للتأمل في القرآن")} 
+                    className="h-7 flex items-center gap-1 px-2.5 rounded-lg bg-amber-50 dark:bg-stone-900 text-amber-900 dark:text-amber-200 font-medium whitespace-nowrap hover:bg-amber-100 dark:hover:bg-stone-800 border border-amber-200/50 dark:border-amber-800/40 transition-colors shrink-0"
                   >
-                    <Sparkles size={13} className="text-amber-600" />
-                    <span>القصص والعبر</span>
+                    <Lightbulb size={12} />
+                    <span>فكرة</span>
                   </button>
-                </div>
-              )}
-
-              {/* Quick Actions before input */}
-              {!isZenMode && !isLoading && (
-                <div className="flex justify-center px-2 mb-1">
-                  <div className="flex gap-2 p-1.5 bg-amber-50/50 dark:bg-amber-900/20 backdrop-blur-sm rounded-2xl border border-amber-100 dark:border-amber-900/50 overflow-x-auto scrollbar-hide max-w-full">
-                    {messages.length > 1 && messages[messages.length-1].role === 'assistant' && (
-                      <>
-                        <button 
-                          onClick={() => sendMessage('أكثر يا مداد الرحمن')}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs font-bold whitespace-nowrap shadow-sm hover:shadow-md transition-all border border-amber-400/50"
-                        >
-                          <Sparkles size={14} className="animate-pulse" /> أكثر
-                        </button>
-                        {currentContext && (
-                          <button 
-                            onClick={() => {
-                              if (currentContext.surah && !currentContext.ayah) {
-                                sendMessage(`لخص لي سورة ${currentContext.surah} واستخرج لي أهم مقاصدها.`);
-                              } else if (currentContext.surah && currentContext.ayah) {
-                                sendMessage(`اشرح لي الآية ${currentContext.ayah} من سورة ${currentContext.surah} واستخرج لي الدروس المستفادة.`);
-                              }
-                            }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-[#1c1917] text-amber-700 dark:text-amber-400 text-xs font-bold whitespace-nowrap border-r border-amber-200 dark:border-amber-800 transition-colors shadow-sm"
-                          >
-                            <BookOpen size={14} /> تدبر
-                          </button>
-                        )}
-                      </>
-                    )}
-                    <button 
-                      onClick={() => sendMessage("اقترح علي فكرة جديدة للتأمل في القرآن")} 
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-white dark:hover:bg-black/20 text-amber-900 dark:text-amber-100 text-xs font-bold whitespace-nowrap transition-colors"
-                    >
-                      <Sparkles size={14} className="text-amber-600" /> فكرة
-                    </button>
-                    {isNetworkEnabled && (
+                  {isNetworkEnabled && (
+                    <>
                       <button 
-                        onClick={() => sendMessage("ابحث في القرآن عن آيات تتحدث عن...")} 
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-white dark:hover:bg-black/20 text-amber-900 dark:text-amber-100 text-xs font-bold whitespace-nowrap border-r border-amber-200 dark:border-amber-800 transition-colors"
+                        onClick={() => setEnableGroundedResearch(!enableGroundedResearch)}
+                        className={`h-7 flex items-center gap-1 px-2 rounded-lg font-medium whitespace-nowrap transition-colors shrink-0 ${enableGroundedResearch ? 'bg-teal-600 text-white' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200/70'}`}
+                        title="البحث الموثق"
                       >
-                        <Search size={14} className="text-emerald-600" /> بحث
+                        <Compass size={12} />
+                        <span>موثق</span>
                       </button>
-                    )}
-                    {/* Smart Quick Toggles */}
-                    {(isNetworkEnabled || enableSpiritualImage) && (
-                      <div className="flex items-center border-r border-amber-200 dark:border-amber-800 pr-2 mr-1 gap-1">
-                        {isNetworkEnabled && (
-                          <>
-                            <button 
-                              onClick={() => setEnableGroundedResearch(!enableGroundedResearch)}
-                              className={`flex items-center gap-1 px-2.5 py-1 rounded-xl transition-all text-xs font-bold ${enableGroundedResearch ? 'bg-teal-600 text-white shadow-sm' : 'bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 hover:bg-teal-100'}`}
-                              title={enableGroundedResearch ? "إلغاء البحث المتقدم الموثق" : "تفعيل البحث المتقدم الموثق بالويب والتفكير العالي"}
-                            >
-                              <Compass size={14} className={enableGroundedResearch ? "animate-spin-slow" : ""} />
-                              <span>البحث الموثق</span>
-                            </button>
-                            <button 
-                              onClick={() => setEnableDeepResearch(!enableDeepResearch)}
-                              className={`flex items-center gap-1 px-2.5 py-1 rounded-xl transition-all text-xs font-bold ${enableDeepResearch ? 'bg-indigo-600 text-white shadow-sm' : 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100'}`}
-                              title={enableDeepResearch ? "إلغاء البحث العميق" : "تفعيل البحث العميق عبر الوكيل"}
-                            >
-                              <Brain size={14} />
-                              <span>البحث العميق</span>
-                            </button>
-                            <button 
-                              onClick={() => setEnableDeepThinking(!enableDeepThinking)}
-                              className={`flex items-center justify-center w-7 h-7 rounded-xl transition-all ${enableDeepThinking ? 'bg-amber-600 text-white shadow-sm' : 'hover:bg-white dark:hover:bg-black/20 text-amber-600/60 dark:text-amber-400/60'}`}
-                              title={enableDeepThinking ? "إلغاء التفكير العميق" : "تفعيل التفكير العميق"}
-                            >
-                              <Lightbulb size={14} className={enableDeepThinking ? "fill-white" : ""} />
-                            </button>
-                            <button
-                              onClick={() => setEnableWebSearch(!enableWebSearch)}
-                              className={`flex items-center justify-center w-7 h-7 rounded-xl transition-all ${enableWebSearch ? 'bg-emerald-600 text-white shadow-sm' : 'hover:bg-white dark:hover:bg-black/20 text-emerald-600/60'}`}
-                              title={enableWebSearch ? "إلغاء بحث الويب" : "تفعيل بحث الويب للتحقق"}
-                            >
-                              <Globe size={14} />
-                            </button>
-                          </>
-                        )}
-                        {enableSpiritualImage && (
-                          <button
-                            onClick={() => setEnableSpiritualImage(!enableSpiritualImage)}
-                            className={`flex items-center justify-center w-7 h-7 rounded-xl transition-all ${enableSpiritualImage ? 'bg-purple-600 text-white shadow-sm' : 'hover:bg-white dark:hover:bg-black/20 text-purple-600/60'}`}
-                            title={enableSpiritualImage ? "إلغاء الصورة المعبرة التلقائية" : "تفعيل توليد صور معبرة تلقائياً"}
-                          >
-                            <ImageIcon size={14} />
-                          </button>
-                        )}
-                      </div>
-                    )}
-                    {enableSpiritualImage && (
                       <button 
-                        onClick={() => window.dispatchEvent(new CustomEvent('open_spiritual_vision', { detail: { text: 'تأمل في آية قرآنية' } }))} 
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-white dark:hover:bg-black/20 text-amber-900 dark:text-amber-100 text-xs font-bold whitespace-nowrap border-r border-amber-200 dark:border-amber-800 transition-colors"
+                        onClick={() => setEnableDeepThinking(!enableDeepThinking)}
+                        className={`h-7 w-7 flex items-center justify-center rounded-lg transition-colors shrink-0 ${enableDeepThinking ? 'bg-amber-600 text-white' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-amber-600'}`}
+                        title="التفكير العميق"
                       >
-                        <ImageIcon size={14} className="text-blue-600" /> صورة
+                        <Lightbulb size={12} />
                       </button>
-                    )}
-                  </div>
+                      <button 
+                        onClick={() => setEnableWebSearch(!enableWebSearch)}
+                        className={`h-7 w-7 flex items-center justify-center rounded-lg transition-colors shrink-0 ${enableWebSearch ? 'bg-emerald-600 text-white' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-emerald-600'}`}
+                        title="بحث الويب"
+                      >
+                        <Globe size={12} />
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
               
@@ -2967,17 +2801,12 @@ ${response.content}`;
                 draftKey="midad_input_draft"
                 ref={chatInputRef}
               />
-              
-              {!isZenMode && (
-                <div className="flex flex-col gap-2 mt-2">
-                </div>
-              )}
             </div>
           </div>
         </div>
       </div>
+      </div>
     </motion.div>
-  </motion.div>
 
   {/* Modals for Midad's 3 Key Innovations */}
   {showTajweedAnalyzer && (

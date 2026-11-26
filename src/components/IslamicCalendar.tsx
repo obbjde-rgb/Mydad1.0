@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Star, Moon, Sun } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useState } from 'react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Star } from 'lucide-react';
 
 interface Occasion {
   day: number;
@@ -29,8 +28,9 @@ const ISLAMIC_OCCASIONS: Occasion[] = [
 ];
 
 export const IslamicCalendar = () => {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate] = useState(new Date());
   const [viewDate, setViewDate] = useState(new Date());
+  const [selectedOccasion, setSelectedOccasion] = useState<Occasion | null>(null);
 
   const getHijriInfo = (date: Date) => {
     const parts = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn', {
@@ -61,13 +61,10 @@ export const IslamicCalendar = () => {
     const days = [];
     const startOfMonth = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
     const endOfMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0);
-    
-    // Get the day of the week for the first day of the month
     const startDay = startOfMonth.getDay();
-    
-    // Add empty slots for days before the start of the month
+
     for (let i = 0; i < startDay; i++) {
-      days.push(<div key={`empty-${i}`} className="h-12 md:h-16" />);
+      days.push(<div key={`empty-${i}`} className="h-14 md:h-16" />);
     }
 
     for (let d = 1; d <= endOfMonth.getDate(); d++) {
@@ -77,29 +74,30 @@ export const IslamicCalendar = () => {
       const isToday = date.toDateString() === currentDate.toDateString();
 
       days.push(
-        <motion.div
+        <button
+          type="button"
           key={d}
-          whileHover={{ scale: 1.05 }}
-          onClick={() => occasion && alert(`${occasion.name}: ${occasion.description || ''}`)}
-          className={`relative h-16 md:h-20 flex flex-col items-center justify-center rounded-xl border transition-all cursor-pointer p-1
-            ${isToday ? 'bg-amber-100 border-amber-400 dark:bg-amber-900/30 dark:border-amber-700 shadow-inner' : 'bg-white/50 border-amber-100 dark:bg-[#1c1917]/30 dark:border-amber-900/20'}
-            ${occasion ? 'ring-2 ring-amber-500 ring-inset bg-amber-50/80 dark:bg-amber-900/20' : ''}
-          `}
+          onClick={() => setSelectedOccasion(occasion || null)}
+          className={`relative h-14 md:h-16 flex flex-col items-center justify-center rounded-xl border transition-colors p-1 tabular-nums ${
+            isToday
+              ? 'bg-amber-100 border-amber-500 dark:bg-amber-900/40 dark:border-amber-600'
+              : 'bg-amber-50/30 border-amber-100/80 dark:bg-stone-900/50 dark:border-amber-900/30 hover:bg-amber-50 dark:hover:bg-stone-800/60'
+          } ${occasion ? 'ring-1 ring-amber-500 bg-amber-50/90 dark:bg-amber-900/25 cursor-pointer' : 'cursor-default'}`}
         >
-          <span className="text-[10px] text-gray-400 dark:text-gray-500 absolute top-1 right-1 font-mono">{d}</span>
-          <span className="text-lg font-bold text-amber-900 dark:text-amber-100">{hijri.day}</span>
+          <span className="text-[10px] text-amber-800/50 dark:text-amber-200/40 absolute top-1 right-1.5 font-mono">{d}</span>
+          <span className="text-base font-bold text-amber-950 dark:text-amber-100">{hijri.day}</span>
           {occasion && (
-            <div className="mt-1 w-full text-center">
-              <span className={`text-[8px] md:text-[9px] font-bold px-1 py-0.5 rounded-md line-clamp-1 leading-tight
-                ${occasion.type === 'holiday' ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300' : 
-                  occasion.type === 'sunnah' ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-300' : 
-                  'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300'}
-              `}>
-                {occasion.name}
-              </span>
-            </div>
+            <span className={`mt-0.5 w-full text-[9px] font-semibold px-1 rounded truncate ${
+              occasion.type === 'holiday'
+                ? 'text-red-700 dark:text-red-300'
+                : occasion.type === 'sunnah'
+                  ? 'text-emerald-700 dark:text-emerald-300'
+                  : 'text-sky-700 dark:text-sky-300'
+            }`}>
+              {occasion.name}
+            </span>
           )}
-        </motion.div>
+        </button>
       );
     }
 
@@ -117,102 +115,96 @@ export const IslamicCalendar = () => {
   const viewHijri = getHijriInfo(viewDate);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="w-full max-w-2xl mx-auto bg-white/80 dark:bg-[#1c1917]/80 backdrop-blur-md rounded-3xl p-6 border border-amber-200 dark:border-amber-900/50 shadow-xl"
-    >
-      <div className="flex items-center justify-between mb-6">
+    <div className="w-full max-w-3xl mx-auto bg-white/95 dark:bg-[#171412]/95 rounded-2xl p-5 sm:p-6 border border-amber-200/50 dark:border-amber-900/40 shadow-sm space-y-6">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-amber-100 dark:bg-amber-900/50 rounded-2xl text-amber-700 dark:text-amber-300">
-            <CalendarIcon size={24} />
+          <div className="w-10 h-10 bg-amber-100/80 dark:bg-amber-900/40 rounded-xl text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+            <CalendarIcon size={20} />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-amber-900 dark:text-amber-100">اليومية الإسلامية</h2>
-            <p className="text-sm text-amber-700 dark:text-amber-400">{viewHijri.monthName} {viewHijri.year} هـ</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-amber-950 dark:text-amber-100 font-kufi">اليومية الإسلامية</h2>
+            <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-400 tabular-nums">{viewHijri.monthName} {viewHijri.year} هـ</p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <button onClick={prevMonth} className="p-2 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-full transition-colors">
-            <ChevronRight size={20} />
+        <div className="flex gap-1.5">
+          <button onClick={prevMonth} className="w-9 h-9 flex items-center justify-center bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-xl transition-colors text-amber-800 dark:text-amber-200" title="الشهر السابق">
+            <ChevronRight size={18} />
           </button>
-          <button onClick={nextMonth} className="p-2 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-full transition-colors">
-            <ChevronLeft size={20} />
+          <button onClick={nextMonth} className="w-9 h-9 flex items-center justify-center bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-xl transition-colors text-amber-800 dark:text-amber-200" title="الشهر التالي">
+            <ChevronLeft size={18} />
           </button>
         </div>
       </div>
 
-      {todayOccasion && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl flex items-center gap-4"
-        >
-          <div className="p-3 bg-amber-500 rounded-xl text-white">
-            <Star size={20} className="fill-white" />
+      {(todayOccasion || selectedOccasion) && (
+        <div className="p-4 bg-amber-50/80 dark:bg-amber-900/20 border border-amber-200/70 dark:border-amber-800/50 rounded-xl flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-amber-600 rounded-xl text-white flex items-center justify-center shrink-0">
+              <Star size={17} className="fill-white" />
+            </div>
+            <div>
+              <p className="text-[11px] text-amber-700 dark:text-amber-400 font-semibold">
+                {selectedOccasion ? 'تفاصيل المناسبة' : 'مناسبة اليوم'}
+              </p>
+              <h3 className="text-sm sm:text-base font-bold text-amber-950 dark:text-amber-100">
+                {(selectedOccasion || todayOccasion)!.name}
+              </h3>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">مناسبة اليوم</p>
-            <h3 className="text-lg font-bold text-amber-900 dark:text-amber-100">{todayOccasion.name}</h3>
-          </div>
-        </motion.div>
+          {selectedOccasion && (
+            <button
+              onClick={() => setSelectedOccasion(null)}
+              className="text-xs font-semibold text-amber-700 dark:text-amber-300 hover:underline shrink-0"
+            >
+              إخفاء
+            </button>
+          )}
+        </div>
       )}
 
-      <div className="grid grid-cols-7 gap-2 mb-4">
+      <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
         {['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س'].map(day => (
-          <div key={day} className="text-center text-xs font-bold text-amber-600 dark:text-amber-500 py-2">
+          <div key={day} className="text-center text-xs font-bold text-amber-700/80 dark:text-amber-400/80 py-1.5">
             {day}
           </div>
         ))}
         {renderCalendarDays()}
       </div>
 
-      <div className="mt-8 space-y-4">
-        <h3 className="text-lg font-bold text-amber-900 dark:text-amber-100 flex items-center gap-2">
-          <Star size={18} className="text-amber-500" />
+      <div className="pt-4 border-t border-amber-100 dark:border-amber-900/30 space-y-3">
+        <h3 className="text-sm sm:text-base font-bold text-amber-950 dark:text-amber-100">
           أهم المناسبات في {viewHijri.monthName}
         </h3>
-        <div className="grid gap-3">
+        <div className="grid gap-2">
           {ISLAMIC_OCCASIONS.filter(o => o.month === viewHijri.month).map((o, idx) => (
-            <motion.div
+            <div
               key={idx}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              className="p-4 bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-2xl flex items-center justify-between"
+              className="px-4 py-3 bg-amber-50/60 dark:bg-amber-900/15 border border-amber-100 dark:border-amber-900/30 rounded-xl flex items-center justify-between gap-3"
             >
-              <div className="flex items-center gap-3">
-                <div className={`w-2 h-2 rounded-full ${o.type === 'holiday' ? 'bg-red-500' : o.type === 'sunnah' ? 'bg-green-500' : 'bg-blue-500'}`} />
-                <span className="font-bold text-amber-900 dark:text-amber-100">{o.name}</span>
+              <div className="flex items-center gap-2 min-w-0">
+                <span className={`text-[11px] font-semibold shrink-0 ${
+                  o.type === 'holiday' ? 'text-red-700 dark:text-red-400' : o.type === 'sunnah' ? 'text-emerald-700 dark:text-emerald-400' : 'text-sky-700 dark:text-sky-400'
+                }`}>
+                  {o.type === 'holiday' ? 'عطلة' : o.type === 'sunnah' ? 'سنة' : 'حدث'}
+                </span>
+                <span aria-hidden="true" className="text-amber-300 dark:text-amber-800">·</span>
+                <span className="font-bold text-sm text-amber-950 dark:text-amber-100 truncate">{o.name}</span>
               </div>
-              <span className="text-sm font-mono bg-amber-100 dark:bg-amber-900/50 px-3 py-1 rounded-full text-amber-700 dark:text-amber-300">
+              <span className="text-xs font-mono tabular-nums text-amber-800 dark:text-amber-300 shrink-0">
                 {o.day} {viewHijri.monthName}
               </span>
-            </motion.div>
+            </div>
           ))}
           {ISLAMIC_OCCASIONS.filter(o => o.month === viewHijri.month).length === 0 && (
-            <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-4 italic">لا توجد مناسبات رئيسية في هذا الشهر</p>
+            <p className="text-center text-xs sm:text-sm text-amber-800/60 dark:text-amber-200/50 py-3">لا توجد مناسبات رئيسية في هذا الشهر</p>
           )}
         </div>
       </div>
 
-      <div className="mt-6 pt-6 border-t border-amber-100 dark:border-amber-900/30 flex justify-between items-center text-xs text-amber-700 dark:text-amber-500">
-        <div className="flex gap-4">
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-red-500" />
-            <span>عطلة رسمية</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-green-500" />
-            <span>سنة نبوية</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-blue-500" />
-            <span>حدث تاريخي</span>
-          </div>
-        </div>
-        <div className="font-medium">المصدر: تقويم أم القرى</div>
+      <div className="pt-4 border-t border-amber-100 dark:border-amber-900/30 flex flex-wrap justify-between items-center gap-2 text-xs text-amber-800/70 dark:text-amber-400/70">
+        <span>عطلة رسمية · سنة نبوية · حدث تاريخي</span>
+        <span className="font-medium">تقويم أم القرى</span>
       </div>
-    </motion.div>
+    </div>
   );
 };

@@ -204,7 +204,6 @@ html {
 .message-bubble {
   overflow-wrap: anywhere;
   word-break: break-word;
-  contain: layout;
   min-height: 1.5em;
 }
 

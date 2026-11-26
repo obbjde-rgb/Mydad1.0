@@ -14,7 +14,7 @@ export const OfflineIndicator: React.FC = () => {
       role="status"
       aria-live="polite"
     >
-      <WifiOff size={14} className="animate-pulse shrink-0" />
+      <WifiOff size={14} className="shrink-0" />
       <span>وضع عدم الاتصال — يتم استخدام البيانات المحفوظة</span>
     </div>
   );

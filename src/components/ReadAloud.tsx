@@ -142,22 +142,22 @@ export const ReadAloud: React.FC<ReadAloudProps> = ({
   };
 
   return (
-    <span className={`inline-flex items-center gap-3 ${className}`}>
+    <span className={`inline-flex items-center gap-2 ${className}`}>
       <button
         onClick={handleReadAloud}
-        className={buttonClassName || `p-3 rounded-2xl transition-all shadow-md hover:scale-110 ${isSpeaking ? 'bg-amber-500 text-white animate-pulse' : 'bg-amber-200 dark:bg-amber-700 text-amber-800 dark:text-amber-200'}`}
+        className={buttonClassName || `w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${isSpeaking ? 'bg-amber-600 text-white' : 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 hover:bg-amber-200/80 dark:hover:bg-amber-900/60'}`}
         aria-label={isSpeaking ? "إيقاف القراءة" : "قراءة بصوت عالٍ"}
         title={isSpeaking ? "إيقاف القراءة" : "قراءة بصوت عالٍ"}
         disabled={isLoading}
       >
-        {isLoading ? <Loader2 size={18} className="animate-spin" /> : isSpeaking ? <VolumeX size={18} /> : <Volume2 size={18} />}
+        {isLoading ? <Loader2 size={16} className="animate-spin" /> : isSpeaking ? <VolumeX size={16} /> : <Volume2 size={16} />}
       </button>
       <button
         onClick={handleDownload}
-        className={buttonClassName || "p-3 rounded-2xl bg-emerald-200 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200 hover:scale-110 transition-transform shadow-md"}
+        className={buttonClassName || "w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-200/80 dark:hover:bg-emerald-900/60 flex items-center justify-center transition-colors"}
         title="تنزيل النص"
       >
-        <Download size={18} />
+        <Download size={16} />
       </button>
     </span>
   );

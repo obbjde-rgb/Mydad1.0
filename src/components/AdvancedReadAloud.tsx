@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Volume2, VolumeX, Download, Loader2 } from 'lucide-react';
-import { GoogleGenAI, Modality } from "@google/genai";
+import { Volume2, VolumeX, Loader2 } from 'lucide-react';
 import { generateRecitationStream } from '../services/aiService';
 
 interface AdvancedReadAloudProps {
@@ -126,15 +125,15 @@ export const AdvancedReadAloud: React.FC<AdvancedReadAloudProps> = ({
   };
 
   return (
-    <span className={`inline-flex items-center gap-3 ${className}`}>
+    <span className={`inline-flex items-center gap-2 ${className}`}>
       <button
         onClick={handleReadAloud}
-        className={buttonClassName || `p-3 rounded-2xl transition-all shadow-md hover:scale-110 ${isSpeaking ? 'bg-amber-500 text-white animate-pulse' : 'bg-amber-200 dark:bg-amber-700 text-amber-800 dark:text-amber-200'}`}
+        className={buttonClassName || `w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${isSpeaking ? 'bg-amber-600 text-white' : 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 hover:bg-amber-200/80 dark:hover:bg-amber-900/60'}`}
         aria-label={isSpeaking ? "إيقاف القراءة" : "قراءة بصوت عالٍ"}
         title={isSpeaking ? "إيقاف القراءة" : "قراءة بصوت عالٍ"}
         disabled={isLoading}
       >
-        {isLoading ? <Loader2 size={18} className="animate-spin" /> : isSpeaking ? <VolumeX size={18} /> : <Volume2 size={18} />}
+        {isLoading ? <Loader2 size={16} className="animate-spin" /> : isSpeaking ? <VolumeX size={16} /> : <Volume2 size={16} />}
       </button>
     </span>
   );

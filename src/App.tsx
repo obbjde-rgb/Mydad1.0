@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useMemo, useCallback, ChangeEvent, lazy, Suspense } from 'react';
 import { Virtuoso } from 'react-virtuoso';
-import { Mic, Square, Play, Pause, Moon, Sun, Volume2, BookOpen, Search, ChevronRight, ChevronLeft, Info, X, Settings2, Sparkles, Monitor, Copy, Share2, Navigation, Star, Image as ImageIcon, Download, AudioLines, Loader2, MessageSquare, Book, Layout, Hash, Type, Maximize, Minimize, Terminal, PenTool, Heart, Compass, Bookmark, Calendar } from 'lucide-react';
+import { Mic, Square, Play, Moon, Sun, Volume2, BookOpen, Search, ChevronRight, ChevronLeft, Info, X, Settings2, Sparkles, Monitor, Copy, Share2, Navigation, Star, Image as ImageIcon, Loader2, Layout, Hash, Type, Maximize, Minimize, Terminal, PenTool, Heart, Compass, Bookmark, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { RECITERS, TAFASIR, TRANSLATIONS, SURAH_AYAH_COUNTS, QIRAAT_EDITIONS, QIRAAT, QURAN_TEXT_URLS } from './constants';
-import { ViewMode, Surah, Translation, Verse } from './types';
+import { RECITERS, TAFASIR, TRANSLATIONS, SURAH_AYAH_COUNTS, QIRAAT, QURAN_TEXT_URLS } from './constants';
+import { ViewMode, Surah, Verse, RecitationSettings } from './types';
 import { PrayerTimesCard } from './components/PrayerTimes';
 import { HijriClock } from './components/HijriClock';
 import { DuaSection } from './components/DuaSection';
@@ -16,9 +16,10 @@ import { PlaybackControls } from './components/PlaybackControls';
 import { UserGuide } from './components/UserGuide';
 import { PaymentGate } from './components/PaymentGate';
 import { AudioWaveform } from './components/AudioWaveform';
+import { Octagram } from './components/Octagram';
 import { AI_PROVIDERS, AIProviderKey, callAI, callAIWithFailover, generateRecitation, transcribeAudio, fetchAllProvidersModels, initModelUpdater } from './services/aiService';
-import { RecitationSettings } from './types';
-import { downloadAudio, shareAudio, generateAudioId, getCachedAudio } from './services/audioCacheService';
+import { generateAudioId, getCachedAudio } from './services/audioCacheService';
+import { applyTajweed, TAJWEED_RULES } from './services/tajweedService';
 import { useTheme } from './hooks/useTheme';
 import { safeLocalStorageSet, safeLocalStorageGet, getSurahDisplayName, parseAIJson, SURAH_START_PAGES, getSurahAndAyahFromMadinaPage } from './lib/utils';
 import { PWAInstallButton } from './components/PWAInstallButton';
@@ -136,32 +137,28 @@ const DailyInspiration = () => {
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-2xl mx-auto mt-12 p-8 rounded-[2.5rem] bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/10 dark:to-orange-900/10 border border-amber-200/50 dark:border-amber-800/30 shadow-2xl shadow-amber-900/5 relative overflow-hidden group"
+      className="w-full p-5 sm:p-6 rounded-2xl bg-white/95 dark:bg-[#171412]/95 border border-amber-200/50 dark:border-amber-900/40 shadow-sm"
     >
-      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-        <Sparkles size={120} className="text-amber-600" />
-      </div>
-      
-      <div className="relative z-10 text-center space-y-6">
-        <div className="flex items-center justify-center gap-2 text-amber-600 dark:text-amber-400 font-bold text-sm tracking-widest uppercase">
-          <Star size={16} fill="currentColor" />
-          <span>آية اليوم للتأمل</span>
-          <Star size={16} fill="currentColor" />
+      <div className="text-center space-y-3">
+        <div className="flex items-center justify-center gap-2 text-amber-700 dark:text-amber-400 font-bold text-xs tracking-wide">
+          <Star size={14} fill="currentColor" />
+          <span>آية اليوم للتدبر</span>
+          <Star size={14} fill="currentColor" />
         </div>
         
         {verse && (
           <>
-            <p className="text-3xl md:text-4xl font-quran leading-loose text-amber-950 dark:text-amber-50 drop-shadow-sm">
+            <p className="text-xl sm:text-2xl md:text-3xl font-quran leading-loose text-amber-950 dark:text-amber-50">
               {verse.text}
             </p>
-            <div className="h-px w-24 bg-gradient-to-r from-transparent via-amber-300 dark:via-amber-700 to-transparent mx-auto" />
-            <p className="text-lg md:text-xl text-amber-900/70 dark:text-amber-200/60 font-sans italic leading-relaxed px-4">
+            <div className="h-px w-20 bg-amber-200/80 dark:bg-amber-800/60 mx-auto" />
+            <p className="text-sm sm:text-base text-amber-900/70 dark:text-amber-200/65 font-sans leading-relaxed max-w-3xl mx-auto">
               {verse.translation}
             </p>
-            <div className="text-sm font-bold text-amber-700 dark:text-amber-400 bg-amber-100/50 dark:bg-amber-900/30 px-4 py-2 rounded-full inline-block">
-              {getSurahDisplayName(verse.surah)} - آية {verse.ayah}
+            <div className="text-xs font-bold text-amber-700 dark:text-amber-300 font-kufi">
+              {getSurahDisplayName(verse.surah)} · آية {verse.ayah}
             </div>
           </>
         )}
@@ -171,14 +168,10 @@ const DailyInspiration = () => {
 };
 
 const QuranVerse = () => (
-  <span className="text-amber-500 font-amiri text-2xl font-bold tracking-widest drop-shadow-md">
+  <span className="text-amber-700 dark:text-amber-300 font-quran text-xl sm:text-2xl md:text-3xl font-bold">
     وَرَتِّلِ الْقُرْآنَ تَرْتِيلًا
   </span>
 );
-
-import { Octagram } from './components/Octagram';
-
-import { applyTajweed, TAJWEED_RULES } from './services/tajweedService';
 
 const TajweedText = ({ text, isTajweed }: { text: string; isTajweed: boolean }) => {
   if (!isTajweed) return <span className="font-amiri">{text}</span>;
@@ -193,60 +186,6 @@ const TajweedText = ({ text, isTajweed }: { text: string; isTajweed: boolean }) 
   );
 };
 
-const JourneyTimeline = ({ history }: { history: any[] }) => {
-  const events = history.filter(m => m.type === 'event').reverse();
-  
-  if (events.length === 0) return null;
-
-  return (
-    <div className="space-y-4 py-4">
-      <h3 className="text-xl font-bold text-amber-900 dark:text-amber-100 flex items-center gap-3 mb-8">
-        <div className="p-2 bg-amber-100 dark:bg-amber-900/50 rounded-xl">
-          <Sparkles size={20} className="text-amber-600 dark:text-amber-400" />
-        </div>
-        سجلك الإيماني (رحلتك الروحية)
-      </h3>
-      <div className="relative border-r-2 border-amber-200/60 dark:border-amber-800/40 mr-5 pr-8 space-y-6">
-        {events.map((event, i) => (
-          <motion.div 
-            key={event.id}
-            initial={{ opacity: 0, x: 20, y: 10 }}
-            animate={{ opacity: 1, x: 0, y: 0 }}
-            transition={{ delay: i * 0.05, duration: 0.4, ease: "easeOut" }}
-            className="relative group"
-          >
-            <div className="absolute -right-[41px] top-2 w-4 h-4 rounded-full bg-amber-400 dark:bg-amber-600 border-4 border-[#fdf8ee] dark:border-[#0c0a09] z-10 shadow-sm group-hover:scale-125 transition-transform duration-300" />
-            <div className="bg-white/80 dark:bg-[#1c1917]/80 backdrop-blur-sm p-5 rounded-3xl border border-amber-100/50 dark:border-amber-900/30 shadow-sm hover:shadow-md hover:border-amber-300/50 dark:hover:border-amber-700/50 transition-all duration-300">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-2xl drop-shadow-sm">{event.eventIcon || '✨'}</span>
-                  <span className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest bg-amber-100/50 dark:bg-amber-900/30 px-2 py-1 rounded-lg">
-                    {event.eventType === 'search' ? 'بحث' : 
-                     event.eventType === 'browse' ? 'تصفح' :
-                     event.eventType === 'listen' ? 'استماع' :
-                     event.eventType === 'bookmark' ? 'علامة' :
-                     event.eventType === 'tafsir' ? 'تفسير' :
-                     event.eventType === 'tasbih' ? 'تسبيح' :
-                     event.eventType === 'dua' ? 'دعاء' :
-                     event.eventType === 'qibla' ? 'قبلة' :
-                     event.eventType === 'prayer' ? 'صلاة' : 'حدث'}
-                  </span>
-                </div>
-                <span className="text-[11px] font-medium text-amber-800/40 dark:text-amber-200/40">
-                  {new Date(event.timestamp).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </div>
-              <p className="text-amber-950 dark:text-amber-50 font-medium leading-relaxed text-sm">
-                {typeof event.content === 'string' ? event.content : JSON.stringify(event.content)}
-              </p>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
 // --- Utility ---
 
 // --- Main App Component ---
@@ -257,22 +196,21 @@ const CommandActionButton = ({
   onClick, 
   className = "", 
   title = "أمر ذكي سريع", 
-  size = 20
+  size = 16
 }: { 
   onClick: () => void; 
   className?: string; 
   title?: string;
   size?: number;
 }) => (
-  <motion.button
-    whileHover={{ scale: 1.1, rotate: -5 }}
-    whileTap={{ scale: 0.9 }}
+  <button
     onClick={(e) => { e.stopPropagation(); onClick(); }}
-    className={`p-2.5 rounded-xl bg-gradient-to-br from-sky-500 to-sky-700 text-white shadow-lg shadow-sky-900/20 hover:shadow-sky-500/40 transition-all border border-sky-400/30 group ${className}`}
+    className={`w-9 h-9 rounded-xl bg-sky-600 hover:bg-sky-700 text-white shadow-sm transition-colors flex items-center justify-center shrink-0 ${className}`}
     title={title}
+    aria-label={title}
   >
-    <Terminal size={size} className="group-hover:animate-pulse" />
-  </motion.button>
+    <Terminal size={size} />
+  </button>
 );
 
 const SmartActionButton = ({ 
@@ -280,7 +218,7 @@ const SmartActionButton = ({
   className = "", 
   title = "المساعد الذكي", 
   icon: Icon = Sparkles,
-  size = 20
+  size = 16
 }: { 
   onClick: () => void; 
   className?: string; 
@@ -288,15 +226,14 @@ const SmartActionButton = ({
   icon?: any;
   size?: number;
 }) => (
-  <motion.button
-    whileHover={{ scale: 1.1, rotate: 5 }}
-    whileTap={{ scale: 0.9 }}
+  <button
     onClick={(e) => { e.stopPropagation(); onClick(); }}
-    className={`p-2.5 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 text-white shadow-lg shadow-amber-900/20 hover:shadow-amber-500/40 transition-all border border-amber-400/30 group ${className}`}
+    className={`w-9 h-9 rounded-xl bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition-colors flex items-center justify-center shrink-0 ${className}`}
     title={title}
+    aria-label={title}
   >
-    <Icon size={size} className="group-hover:animate-pulse" />
-  </motion.button>
+    <Icon size={size} />
+  </button>
 );
 
 function App() {
@@ -322,12 +259,11 @@ function App() {
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     return (safeLocalStorageGet('quran_viewMode') as ViewMode) || 'search';
   });
-  const [hasPlatformApiKey, setHasPlatformApiKey] = useState(true);
   const [isCheckingApiKey, setIsCheckingApiKey] = useState(true);
   const [isUnlocked, setIsUnlocked] = useState(() => {
     return safeLocalStorageGet('quran_app_unlocked_v2') === 'true';
   });
-  const { themeMode, isDarkMode, toggleTheme } = useTheme();
+  const { themeMode, toggleTheme } = useTheme();
   const [recentSurahs, setRecentSurahs] = useState<number[]>(() => {
     try {
       const saved = safeLocalStorageGet('recentSurahs');
@@ -385,8 +321,7 @@ function App() {
 
       try {
         if (window.aistudio && window.aistudio.hasSelectedApiKey) {
-          const hasKey = await window.aistudio.hasSelectedApiKey();
-          setHasPlatformApiKey(hasKey);
+          await window.aistudio.hasSelectedApiKey();
         }
       } catch (e) {
         console.warn("API key check failed:", e);
@@ -397,14 +332,6 @@ function App() {
     };
     checkApiKey();
   }, []);
-
-  const handleSelectApiKey = async () => {
-    if (window.aistudio && window.aistudio.openSelectKey) {
-      await window.aistudio.openSelectKey();
-      // Assume success as per instructions to mitigate race condition
-      setHasPlatformApiKey(true);
-    }
-  };
 
   const getReciterFolder = (reciter: string) => {
     const reciterMapping: Record<string, string> = {
@@ -626,7 +553,6 @@ function App() {
     }
   }, [activeAyah]);
 
-  const [tafsirContent, setTafsirContent] = useState<string | null>(null);
   const [audioProgress, setAudioProgress] = useState(0);
   const [currentAudioData, setCurrentAudioData] = useState<Uint8Array | null>(null);
   const [currentMimeType, setCurrentMimeType] = useState<string>('audio/wav');
@@ -658,8 +584,6 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-  const [isDragging, setIsDragging] = useState(false);
-  const dragTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const [showMidadAlRahman, setShowMidadAlRahman] = useState<boolean>(() => safeLocalStorageGet('quran_showMidadAlRahman') === 'true');
 
@@ -1006,7 +930,6 @@ function App() {
     }
     setIsPlaying(false);
     setActiveAyah(null);
-    setTafsirContent(null);
     setAudioProgress(0);
   }, [viewMode]);
 
@@ -1081,9 +1004,7 @@ function App() {
       
       if (selectedTafsir === 'ai.explanation') {
         const prompt = `اشرح الآية رقم ${ayahNum} من ${getSurahDisplayName(surahName.toString())} شرحاً ميسراً ومختصراً باللغة العربية. الآية هي: ${ayahObj?.text}`;
-        setTafsirContent("جاري توليد التفسير بالذكاء الاصطناعي...");
         const aiTafsir = await callAI(provider, [{ role: 'user', content: prompt }]);
-        setTafsirContent(aiTafsir.content);
         setAIContext({ 
           surah: surahName.toString(), 
           ayah: ayahNum, 
@@ -1097,7 +1018,6 @@ function App() {
       const res = await fetch(`https://api.alquran.cloud/v1/ayah/${surahNum}:${ayahNum}/${selectedTafsir}`);
       const data = await res.json();
       if (data.code === 200) {
-        setTafsirContent(data.data.text);
         setAIContext({ 
           surah: surahName.toString(), 
           ayah: ayahNum, 
@@ -1108,7 +1028,7 @@ function App() {
         logAIEvent(`قراءة تفسير الآية ${ayahNum} من ${getSurahDisplayName(surahName.toString())}`, '📝');
       }
     } catch (e) {
-      setTafsirContent("تعذر جلب التفسير حالياً.");
+      console.error("Failed to fetch tafsir:", e);
     }
   };
 
@@ -1866,7 +1786,6 @@ function App() {
     setIsSpeaking(false);
     setIsPlaying(false);
     setActiveAyah(null);
-    setTafsirContent(null);
     setAudioProgress(0);
     setIsLoading(false);
   };
@@ -2290,7 +2209,6 @@ function App() {
         const res = await fetch(`https://api.alquran.cloud/v1/ayah/${surahId}:${ayahId}/${tafsirId}`);
         const data = await res.json();
         if (data.code === 200) {
-          setTafsirContent(data.data.text);
           // Update context with the actual content
           setAIContext(prev => ({
             ...prev!,
@@ -2305,10 +2223,6 @@ function App() {
   };
 
   const toggleThemeMode = () => {
-    const modes: ('light' | 'dark' | 'auto')[] = ['light', 'dark', 'auto'];
-    const currentIndex = modes.indexOf(themeMode);
-    const nextMode = modes[(currentIndex + 1) % modes.length];
-    
     toggleTheme();
   };
 
@@ -2456,203 +2370,219 @@ function App() {
       ) : !quranData && isLoading ? (
         <div className="min-h-screen flex flex-col items-center justify-center bg-[#fdf8ee] dark:bg-[#0c0a09]">
           <Loader2 className="w-10 h-10 animate-spin text-amber-600 mb-4" />
-          <p className="text-amber-900 dark:text-amber-100 font-bold text-xl animate-pulse">جاري تحميل المصحف الشريف...</p>
+          <p className="text-amber-900 dark:text-amber-100 font-bold text-lg">جاري تحميل المصحف الشريف...</p>
         </div>
       ) : (
-      <div className={`min-h-screen-dynamic transition-colors duration-700 font-vazir relative overflow-x-hidden islamic-pattern ${themeMode === 'dark' ? 'dark bg-[#0c0a09]' : 'bg-[#fdf8ee] noor-mode'}`} style={{ fontSize: `${fontSize}px` }} dir="rtl">
-        {/* Decorative Background Elements */}
-        <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-amber-500/5 blur-[50px] rounded-full opacity-60" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-orange-600/5 blur-[50px] rounded-full opacity-60" />
-        </div>
-        
-        <div className={`relative z-10 ${viewMode === 'ai-chat' ? 'max-w-7xl h-screen-dynamic flex flex-col' : 'max-w-5xl'} mx-auto p-4 md:p-8 pb-32 transition-all duration-500`}>
-        {/* Decorative Corner Ornaments */}
+      <div className={`min-h-screen-dynamic transition-colors duration-300 font-vazir relative overflow-x-hidden islamic-pattern ${themeMode === 'dark' ? 'dark bg-[#0c0a09]' : 'bg-[#fdf8ee] noor-mode'}`} style={{ fontSize: `${fontSize}px` }} dir="rtl">
+        {/* Top App Bar */}
         {viewMode !== 'ai-chat' && (
-          <>
-            <div className="absolute top-0 left-0 w-24 h-24 border-t-4 border-l-4 border-amber-600/30 rounded-tl-3xl pointer-events-none"></div>
-            <div className="absolute top-0 right-0 w-24 h-24 border-t-4 border-r-4 border-amber-600/30 rounded-tr-3xl pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 w-24 h-24 border-b-4 border-l-4 border-amber-600/30 rounded-bl-3xl pointer-events-none"></div>
-            <div className="absolute bottom-0 right-0 w-24 h-24 border-b-4 border-r-4 border-amber-600/30 rounded-br-3xl pointer-events-none"></div>
-          </>
-        )}
-        
-        {/* Header */}
-        <header className={`text-center relative transition-all duration-500 ${viewMode === 'ai-chat' ? 'mb-4 pt-4' : 'mb-16'}`}>
-          {viewMode !== 'ai-chat' && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.8 }} 
-              animate={{ opacity: 1, scale: 1 }} 
-              className="inline-block mb-6 pt-16"
-            >
-              <div className="flex justify-center mb-6">
-                <Octagram />
-              </div>
-            </motion.div>
-          )}
-        </header>
+          <header className="sticky top-0 z-50 h-14 bg-white/90 dark:bg-[#141210]/90 backdrop-blur-md border-b border-amber-200/50 dark:border-amber-900/40">
+            <div className="max-w-6xl mx-auto h-full px-3 sm:px-6 flex items-center justify-between gap-2">
+              <button
+                onClick={() => { setViewMode('search'); setShowMidadAlRahman(false); setSelectedSurah(null); }}
+                className="flex items-center gap-2.5 text-amber-950 dark:text-amber-50 hover:opacity-85 transition-opacity shrink-0"
+              >
+                <span className="w-8 h-8 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-sm">
+                  <BookOpen size={17} />
+                </span>
+                <span className="font-kufi font-bold text-base sm:text-lg whitespace-nowrap">مداد الرحمن</span>
+              </button>
 
-          {viewMode !== 'ai-chat' && (
-            <>
-              <div className="text-center">
-                <motion.h1 
-                  initial={{ opacity: 0, y: 10 }} 
-                  animate={{ opacity: 1, y: 0 }} 
-                  transition={{ delay: 0.2 }} 
-                  className="text-6xl md:text-8xl font-black text-amber-900 dark:text-amber-100 mb-4 tracking-tighter"
+              <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto hide-scrollbar">
+                <PWAInstallButton />
+                <CommandActionButton onClick={() => openAIHubWithCommand('/')} />
+                <button 
+                  onClick={() => setShowUserGuide(true)} 
+                  className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/25 text-amber-800 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-800/40 border border-amber-200/50 dark:border-amber-800/40 flex items-center justify-center transition-colors shrink-0"
+                  title="دليل المستخدم"
+                  aria-label="دليل المستخدم"
                 >
-                  <QuranVerse />
-                </motion.h1>
-                
-                <motion.p 
-                  initial={{ opacity: 0 }} 
-                  animate={{ opacity: 1 }} 
-                  transition={{ delay: 0.4 }} 
-                  className="text-2xl md:text-3xl text-amber-800 dark:text-amber-400 font-quran italic"
+                  <BookOpen size={17} />
+                </button>
+                <button 
+                  onClick={() => {
+                    const randomVision = [
+                      "رؤية روحية: الصبر مفتاح الفرج، والتوكل على الله هو قمة الإيمان.",
+                      "تأمل: القرآن ربيع القلوب، ونور الصدور، وجلاء الأحزان.",
+                      "نصيحة: اجعل لك خبيئة من عمل صالح لا يعلمها إلا الله.",
+                      "إلهام: من وجد الله فماذا فقد؟ ومن فقد الله فماذا وجد؟",
+                      "تذكير: سبحان الله وبحمده، سبحان الله العظيم."
+                    ];
+                    setVisionText(randomVision[Math.floor(Math.random() * randomVision.length)]);
+                  }} 
+                  className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-900/25 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-800/40 border border-sky-200/50 dark:border-sky-800/40 flex items-center justify-center transition-colors shrink-0"
+                  title="رؤية روحية"
+                  aria-label="رؤية روحية"
                 >
-                  بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
-                </motion.p>
+                  <Sparkles size={17} />
+                </button>
+                <button 
+                  onClick={() => setShowSettings(!showSettings)} 
+                  className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-colors shrink-0 ${showSettings ? 'bg-amber-700 text-white border-amber-700' : 'bg-amber-50 dark:bg-amber-900/25 text-amber-800 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-800/40 border-amber-200/50 dark:border-amber-800/40'}`}
+                  title="الإعدادات"
+                  aria-label="الإعدادات"
+                >
+                  <Settings2 size={17} />
+                </button>
+                <button 
+                  onClick={toggleThemeMode} 
+                  className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/25 text-amber-800 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-800/40 border border-amber-200/50 dark:border-amber-800/40 flex items-center justify-center transition-colors shrink-0"
+                  title={
+                    themeMode === 'dark' ? "الوضع الليلي" : 
+                    themeMode === 'light' ? "الوضع النهاري" : 
+                    "تلقائي (حسب النظام)"
+                  }
+                  aria-label="تغيير المظهر"
+                >
+                  {themeMode === 'dark' ? <Moon size={17} /> : 
+                   themeMode === 'light' ? <Sun size={17} /> : 
+                   <Monitor size={17} />}
+                </button>
               </div>
-
-              <div className="mt-10 space-y-6">
-                <HijriClock />
-                <div className="flex flex-wrap gap-3 justify-center items-center">
-                  <PWAInstallButton />
-                  <CommandActionButton onClick={() => openAIHubWithCommand('/')} />
-                  <button 
-                    onClick={() => setShowUserGuide(true)} 
-                    className="p-3.5 rounded-2xl bg-amber-100 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-800/40 transition-all active:scale-95"
-                    title="دليل المستخدم"
-                  >
-                    <BookOpen size={22} />
-                  </button>
-                  <button 
-                    onClick={() => {
-                      const randomVision = [
-                        "رؤية روحية: الصبر مفتاح الفرج، والتوكل على الله هو قمة الإيمان.",
-                        "تأمل: القرآن ربيع القلوب، ونور الصدور، وجلاء الأحزان.",
-                        "نصيحة: اجعل لك خبيئة من عمل صالح لا يعلمها إلا الله.",
-                        "إلهام: من وجد الله فماذا فقد؟ ومن فقد الله فماذا وجد؟",
-                        "تذكير: سبحان الله وبحمده، سبحان الله العظيم."
-                      ];
-                      setVisionText(randomVision[Math.floor(Math.random() * randomVision.length)]);
-                    }} 
-                    className="p-3.5 rounded-2xl bg-sky-100 dark:bg-sky-900/20 text-sky-800 dark:text-sky-200 hover:bg-sky-200 dark:hover:bg-sky-800/40 transition-all active:scale-95"
-                    title="رؤية روحية"
-                  >
-                    <Sparkles size={22} />
-                  </button>
-                  <button 
-                    onClick={() => setShowSettings(!showSettings)} 
-                    className="p-3.5 rounded-2xl bg-amber-100 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-800/40 transition-all active:scale-95"
-                    title="الإعدادات"
-                  >
-                    <Settings2 size={22} />
-                  </button>
-                  <button 
-                    onClick={toggleThemeMode} 
-                    className="p-3.5 rounded-2xl bg-amber-100 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-800/40 transition-all active:scale-95"
-                    title={
-                      themeMode === 'dark' ? "الوضع الليلي" : 
-                      themeMode === 'light' ? "الوضع النهاري" : 
-                      "تلقائي (حسب النظام)"
-                    }
-                  >
-                    {themeMode === 'dark' ? <Moon size={22} /> : 
-                     themeMode === 'light' ? <Sun size={22} /> : 
-                     <Monitor size={22} />}
-                  </button>
-                </div>
-                <PrayerTimesCard />
-                <DailyInspiration />
-              </div>
-            </>
-          )}
-
-        {/* Main Navigation Bar */}
-        <div className={`sticky top-2 md:top-4 z-50 w-full max-w-5xl mx-auto mb-8 px-4 transition-all duration-500 ${viewMode === 'ai-chat' ? 'opacity-80 hover:opacity-100' : ''}`}>
-          <div className="flex overflow-x-auto hide-scrollbar pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:justify-center">
-            <div className="flex gap-2 md:gap-3 bg-white/80 dark:bg-[#1c1917]/80 p-2 rounded-3xl border border-amber-200/50 dark:border-amber-800/30 backdrop-blur-xl shadow-lg min-w-max">
-              
-              <button 
-                onClick={() => { setViewMode('search'); setShowMidadAlRahman(false); }} 
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm md:text-base font-bold transition-all duration-300 whitespace-nowrap ${viewMode === 'search' && !showMidadAlRahman ? 'bg-amber-700 text-white shadow-md shadow-amber-900/20 scale-105' : 'text-amber-900/80 dark:text-amber-100/80 hover:bg-amber-200/50 dark:hover:bg-amber-800/40 hover:text-amber-950 dark:hover:text-amber-50'}`}
-              >
-                <Search size={18} />
-                <span>البحث</span>
-              </button>
-
-              <button 
-                onClick={() => { setViewMode('browse'); setShowMidadAlRahman(false); }} 
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm md:text-base font-bold transition-all duration-300 whitespace-nowrap ${viewMode === 'browse' && !showMidadAlRahman ? 'bg-amber-700 text-white shadow-md shadow-amber-900/20 scale-105' : 'text-amber-900/80 dark:text-amber-100/80 hover:bg-amber-200/50 dark:hover:bg-amber-800/40 hover:text-amber-950 dark:hover:text-amber-50'}`}
-              >
-                <BookOpen size={18} />
-                <span>المصحف</span>
-              </button>
-
-              <button 
-                onClick={() => setShowMidadAlRahman(true)} 
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm md:text-base font-bold transition-all duration-300 whitespace-nowrap ${showMidadAlRahman ? 'bg-gradient-to-r from-amber-700 to-amber-900 text-white shadow-md shadow-amber-900/30 scale-105' : 'text-amber-800 dark:text-amber-200 hover:bg-amber-200/50 dark:hover:bg-amber-800/40'}`}
-              >
-                <PenTool size={18} />
-                <span>مداد الرحمن</span>
-              </button>
-
-              <button 
-                onClick={() => { setViewMode('ai-chat'); setShowMidadAlRahman(false); }} 
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm md:text-base font-bold transition-all duration-300 whitespace-nowrap ${viewMode === 'ai-chat' && !showMidadAlRahman ? 'bg-gradient-to-r from-sky-600 to-blue-700 text-white shadow-md shadow-sky-900/20 scale-105' : 'text-sky-700 dark:text-sky-300 hover:bg-sky-200/50 dark:hover:bg-sky-800/40'}`}
-              >
-                <Sparkles size={18} className={viewMode === 'ai-chat' && !showMidadAlRahman ? 'animate-pulse' : ''} />
-                <span>المساعد</span>
-              </button>
-
-              <div className="w-px h-8 bg-amber-300/50 dark:bg-amber-700/50 self-center mx-1"></div>
-
-              <button 
-                onClick={() => { setViewMode('duas'); setShowMidadAlRahman(false); }} 
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm md:text-base font-bold transition-all duration-300 whitespace-nowrap ${viewMode === 'duas' && !showMidadAlRahman ? 'bg-amber-700 text-white shadow-md shadow-amber-900/20 scale-105' : 'text-amber-900/80 dark:text-amber-100/80 hover:bg-amber-200/50 dark:hover:bg-amber-800/40 hover:text-amber-950 dark:hover:text-amber-50'}`}
-              >
-                <Heart size={18} />
-                <span>الأدعية</span>
-              </button>
-
-              <button 
-                onClick={() => { setViewMode('qibla'); setShowMidadAlRahman(false); }} 
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm md:text-base font-bold transition-all duration-300 whitespace-nowrap ${viewMode === 'qibla' && !showMidadAlRahman ? 'bg-amber-700 text-white shadow-md shadow-amber-900/20 scale-105' : 'text-amber-900/80 dark:text-amber-100/80 hover:bg-amber-200/50 dark:hover:bg-amber-800/40 hover:text-amber-950 dark:hover:text-amber-50'}`}
-              >
-                <Compass size={18} />
-                <span>القبلة</span>
-              </button>
-
-              <button 
-                onClick={() => { setViewMode('tasbih'); setShowMidadAlRahman(false); }} 
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm md:text-base font-bold transition-all duration-300 whitespace-nowrap ${viewMode === 'tasbih' && !showMidadAlRahman ? 'bg-amber-700 text-white shadow-md shadow-amber-900/20 scale-105' : 'text-amber-900/80 dark:text-amber-100/80 hover:bg-amber-200/50 dark:hover:bg-amber-800/40 hover:text-amber-950 dark:hover:text-amber-50'}`}
-              >
-                <Hash size={18} />
-                <span>السبحة</span>
-              </button>
-
-              <button 
-                onClick={() => { setViewMode('bookmarks'); setShowMidadAlRahman(false); }} 
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm md:text-base font-bold transition-all duration-300 whitespace-nowrap ${viewMode === 'bookmarks' && !showMidadAlRahman ? 'bg-amber-700 text-white shadow-md shadow-amber-900/20 scale-105' : 'text-amber-900/80 dark:text-amber-100/80 hover:bg-amber-200/50 dark:hover:bg-amber-800/40 hover:text-amber-950 dark:hover:text-amber-50'}`}
-              >
-                <Bookmark size={18} />
-                <span>المحفوظات</span>
-              </button>
-
-              <button 
-                onClick={() => { setViewMode('calendar'); setShowMidadAlRahman(false); }} 
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm md:text-base font-bold transition-all duration-300 whitespace-nowrap ${viewMode === 'calendar' && !showMidadAlRahman ? 'bg-amber-700 text-white shadow-md shadow-amber-900/20 scale-105' : 'text-amber-900/80 dark:text-amber-100/80 hover:bg-amber-200/50 dark:hover:bg-amber-800/40 hover:text-amber-950 dark:hover:text-amber-50'}`}
-              >
-                <Calendar size={18} />
-                <span>اليومية</span>
-              </button>
-
             </div>
-          </div>
-        </div>
+          </header>
+        )}
 
-        <main className="space-y-10">
+        <div className={`relative z-10 ${viewMode === 'ai-chat' ? 'max-w-7xl h-screen-dynamic flex flex-col p-3 sm:p-5' : 'max-w-6xl px-3 sm:px-6 pt-5 pb-28 space-y-5'} mx-auto`}>
+
+          {viewMode !== 'ai-chat' && (
+            <section className="space-y-4">
+              {/* Compact Archival Hero Banner */}
+              <div className="rounded-2xl bg-white/95 dark:bg-[#171412]/95 border border-amber-200/50 dark:border-amber-900/40 shadow-sm p-5 sm:p-6">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="text-center md:text-right space-y-2.5 flex-1">
+                    <h1 className="font-bold text-amber-950 dark:text-amber-50">
+                      <QuranVerse />
+                    </h1>
+                    <p className="text-lg sm:text-xl text-amber-800/90 dark:text-amber-300/90 font-quran">
+                      بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+                    </p>
+                    <p className="text-xs sm:text-sm text-amber-900/70 dark:text-amber-200/65 max-w-xl mx-auto md:mx-0">
+                      منصتك الشاملة لتلاوة القرآن الكريم وتدبره، مع التفسير والقراءات، ومواقيت الصلاة، والأدعية اليومية.
+                    </p>
+                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-1">
+                      <button
+                        onClick={() => { setViewMode('browse'); setShowMidadAlRahman(false); }}
+                        className="h-9 px-4 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs sm:text-sm font-bold inline-flex items-center gap-2 transition-colors whitespace-nowrap shrink-0"
+                      >
+                        <BookOpen size={15} />
+                        <span>تصفح المصحف</span>
+                      </button>
+                      <button
+                        onClick={() => setShowMidadAlRahman(true)}
+                        className="h-9 px-4 rounded-xl bg-amber-100/80 dark:bg-amber-900/30 hover:bg-amber-200/70 text-amber-900 dark:text-amber-100 border border-amber-200/60 dark:border-amber-800/40 text-xs sm:text-sm font-bold inline-flex items-center gap-2 transition-colors whitespace-nowrap shrink-0"
+                      >
+                        <PenTool size={15} />
+                        <span>مداد الرحمن</span>
+                      </button>
+                      <button
+                        onClick={() => { setViewMode('ai-chat'); setShowMidadAlRahman(false); }}
+                        className="h-9 px-4 rounded-xl bg-sky-50 dark:bg-sky-950/30 hover:bg-sky-100 dark:hover:bg-sky-900/40 text-sky-800 dark:text-sky-200 border border-sky-200/60 dark:border-sky-800/40 text-xs sm:text-sm font-bold inline-flex items-center gap-2 transition-colors whitespace-nowrap shrink-0"
+                      >
+                        <Sparkles size={15} />
+                        <span>المساعد الذكي</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="shrink-0 flex justify-center">
+                    <Octagram />
+                  </div>
+                </div>
+              </div>
+
+              {/* Balanced 2-Column Time & Prayer Essentials */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+                <HijriClock />
+                <PrayerTimesCard />
+              </div>
+
+              {/* Daily Verse Inspiration */}
+              <DailyInspiration />
+            </section>
+          )}
+
+          {/* Workspace Navigation Strip */}
+          <nav aria-label="أقسام المنصة" className={`${viewMode === 'ai-chat' ? 'mb-3' : ''}`}>
+            <div className="rounded-2xl bg-white/95 dark:bg-[#171412]/95 border border-amber-200/50 dark:border-amber-900/40 shadow-sm p-1.5 overflow-x-auto hide-scrollbar">
+              <div className="flex items-center gap-1 min-w-max lg:justify-center">
+                <button 
+                  onClick={() => { setViewMode('search'); setShowMidadAlRahman(false); }} 
+                  className={`h-9 flex items-center gap-1.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-colors whitespace-nowrap shrink-0 ${viewMode === 'search' && !showMidadAlRahman ? 'bg-amber-700 text-white shadow-sm' : 'text-amber-900/80 dark:text-amber-100/80 hover:bg-amber-100/70 dark:hover:bg-amber-900/30'}`}
+                >
+                  <Search size={16} />
+                  <span>البحث</span>
+                </button>
+
+                <button 
+                  onClick={() => { setViewMode('browse'); setShowMidadAlRahman(false); }} 
+                  className={`h-9 flex items-center gap-1.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-colors whitespace-nowrap shrink-0 ${viewMode === 'browse' && !showMidadAlRahman ? 'bg-amber-700 text-white shadow-sm' : 'text-amber-900/80 dark:text-amber-100/80 hover:bg-amber-100/70 dark:hover:bg-amber-900/30'}`}
+                >
+                  <BookOpen size={16} />
+                  <span>المصحف</span>
+                </button>
+
+                <button 
+                  onClick={() => setShowMidadAlRahman(true)} 
+                  className={`h-9 flex items-center gap-1.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-colors whitespace-nowrap shrink-0 ${showMidadAlRahman ? 'bg-amber-800 text-white shadow-sm' : 'text-amber-900/80 dark:text-amber-100/80 hover:bg-amber-100/70 dark:hover:bg-amber-900/30'}`}
+                >
+                  <PenTool size={16} />
+                  <span>مداد الرحمن</span>
+                </button>
+
+                <button 
+                  onClick={() => { setViewMode('ai-chat'); setShowMidadAlRahman(false); }} 
+                  className={`h-9 flex items-center gap-1.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-colors whitespace-nowrap shrink-0 ${viewMode === 'ai-chat' && !showMidadAlRahman ? 'bg-sky-700 text-white shadow-sm' : 'text-sky-700 dark:text-sky-300 hover:bg-sky-100/70 dark:hover:bg-sky-900/30'}`}
+                >
+                  <Sparkles size={16} />
+                  <span>المساعد</span>
+                </button>
+
+                <div className="w-px h-5 bg-amber-200 dark:bg-amber-800/60 mx-1 shrink-0" />
+
+                <button 
+                  onClick={() => { setViewMode('duas'); setShowMidadAlRahman(false); }} 
+                  className={`h-9 flex items-center gap-1.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-colors whitespace-nowrap shrink-0 ${viewMode === 'duas' && !showMidadAlRahman ? 'bg-amber-700 text-white shadow-sm' : 'text-amber-900/80 dark:text-amber-100/80 hover:bg-amber-100/70 dark:hover:bg-amber-900/30'}`}
+                >
+                  <Heart size={16} />
+                  <span>الأدعية</span>
+                </button>
+
+                <button 
+                  onClick={() => { setViewMode('qibla'); setShowMidadAlRahman(false); }} 
+                  className={`h-9 flex items-center gap-1.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-colors whitespace-nowrap shrink-0 ${viewMode === 'qibla' && !showMidadAlRahman ? 'bg-amber-700 text-white shadow-sm' : 'text-amber-900/80 dark:text-amber-100/80 hover:bg-amber-100/70 dark:hover:bg-amber-900/30'}`}
+                >
+                  <Compass size={16} />
+                  <span>القبلة</span>
+                </button>
+
+                <button 
+                  onClick={() => { setViewMode('tasbih'); setShowMidadAlRahman(false); }} 
+                  className={`h-9 flex items-center gap-1.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-colors whitespace-nowrap shrink-0 ${viewMode === 'tasbih' && !showMidadAlRahman ? 'bg-amber-700 text-white shadow-sm' : 'text-amber-900/80 dark:text-amber-100/80 hover:bg-amber-100/70 dark:hover:bg-amber-900/30'}`}
+                >
+                  <Hash size={16} />
+                  <span>السبحة</span>
+                </button>
+
+                <button 
+                  onClick={() => { setViewMode('bookmarks'); setShowMidadAlRahman(false); }} 
+                  className={`h-9 flex items-center gap-1.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-colors whitespace-nowrap shrink-0 ${viewMode === 'bookmarks' && !showMidadAlRahman ? 'bg-amber-700 text-white shadow-sm' : 'text-amber-900/80 dark:text-amber-100/80 hover:bg-amber-100/70 dark:hover:bg-amber-900/30'}`}
+                >
+                  <Bookmark size={16} />
+                  <span>المحفوظات</span>
+                </button>
+
+                <button 
+                  onClick={() => { setViewMode('calendar'); setShowMidadAlRahman(false); }} 
+                  className={`h-9 flex items-center gap-1.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-colors whitespace-nowrap shrink-0 ${viewMode === 'calendar' && !showMidadAlRahman ? 'bg-amber-700 text-white shadow-sm' : 'text-amber-900/80 dark:text-amber-100/80 hover:bg-amber-100/70 dark:hover:bg-amber-900/30'}`}
+                >
+                  <Calendar size={16} />
+                  <span>اليومية</span>
+                </button>
+              </div>
+            </div>
+          </nav>
+
+        <main className="space-y-6">
           {/* Settings Panel */}
           <AnimatePresence>
             {showSettings && (
@@ -2694,19 +2624,19 @@ function App() {
 
           <AnimatePresence mode="wait">
             {viewMode === 'search' ? (
-              <motion.div key="search" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-8">
+              <motion.div key="search" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-5">
                 {/* Recent Surahs */}
                 {recentSurahs.length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="text-lg font-bold text-amber-900 dark:text-amber-200 mb-3">آخر ما قرأت</h3>
-                    <div className="flex gap-3 overflow-x-auto pb-2">
+                  <div className="bg-white/90 dark:bg-[#171412]/90 rounded-2xl border border-amber-200/50 dark:border-amber-900/40 p-4 shadow-sm">
+                    <h3 className="text-xs font-bold text-amber-800/80 dark:text-amber-300/80 mb-2.5">آخر ما قرأت</h3>
+                    <div className="flex gap-2 overflow-x-auto hide-scrollbar">
                       {recentSurahs.map(surahId => {
                         const surah = quranData?.find(s => s.id === surahId);
                         return surah ? (
                           <button
                             key={surahId}
                             onClick={() => handleSurahSelect(surah)}
-                            className="px-4 py-2 bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-100 rounded-full whitespace-nowrap text-sm font-bold hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors"
+                            className="h-8 px-3.5 bg-amber-50 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100 border border-amber-200/60 dark:border-amber-800/40 rounded-xl whitespace-nowrap shrink-0 text-xs sm:text-sm font-bold hover:bg-amber-100 dark:hover:bg-amber-800/50 transition-colors"
                           >
                             {surah.name}
                           </button>
@@ -2716,10 +2646,9 @@ function App() {
                   </div>
                 )}
 
-                {/* Search Input */}
-                <div className="relative group" role="search">
-                  <div className="absolute -inset-1 bg-gradient-to-r from-amber-500 to-amber-800 rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-                  <div className="relative bg-white dark:bg-[#1c1917] rounded-[2.5rem] shadow-2xl overflow-hidden border border-amber-200 dark:border-amber-900/50">
+                {/* Search Composer */}
+                <div className="relative" role="search">
+                  <div className="bg-white dark:bg-[#171412] rounded-2xl shadow-sm overflow-hidden border border-amber-200/60 dark:border-amber-900/50">
                     <label htmlFor="quran-search-input" className="sr-only">البحث في القرآن الكريم</label>
                     <textarea
                       ref={searchInputRef}
@@ -2727,9 +2656,9 @@ function App() {
                       value={searchText}
                       onChange={handleTextChange}
                       onKeyDown={handleKeyDown}
-                      placeholder="ابحث في آيات الذكر الحكيم... اكتب آيةً كريمة، أو طرفاً منها، أو اسم السورة للبحث والتدبر (Ctrl+K)"
+                      placeholder="ابحث في آيات الذكر الحكيم... اكتب آيةً كريمة، أو طرفاً منها، أو اسم السورة (Ctrl+K)"
                       aria-label="خانة البحث في القرآن الكريم"
-                      className="w-full h-48 p-8 text-3xl text-right bg-transparent border-none focus:ring-0 resize-none font-quran leading-relaxed text-black dark:text-[#f5f5f4] placeholder:text-amber-900/80 dark:placeholder:text-amber-100/40"
+                      className="w-full h-32 sm:h-36 p-5 sm:p-6 text-xl sm:text-2xl text-right bg-transparent border-none focus:ring-0 focus:outline-none resize-none font-quran leading-relaxed text-amber-950 dark:text-amber-50 placeholder:text-amber-900/45 dark:placeholder:text-amber-100/35"
                       dir="rtl"
                       lang="ar"
                       aria-autocomplete="list"
@@ -2742,7 +2671,7 @@ function App() {
                     {suggestions.length > 0 && (
                       <ul 
                         id="search-suggestions"
-                        className="absolute z-10 w-full bg-white dark:bg-[#292524] border-t border-amber-100 dark:border-amber-900 shadow-lg max-h-60 overflow-auto" 
+                        className="w-full bg-amber-50/70 dark:bg-[#1e1a17] border-t border-amber-200/60 dark:border-amber-900/40 max-h-56 overflow-auto" 
                         dir="rtl" 
                         role="listbox"
                         aria-label="اقتراحات البحث"
@@ -2753,7 +2682,7 @@ function App() {
                             id={`suggestion-${i}`}
                             role="option"
                             aria-selected={i === activeSuggestionIndex}
-                            className={`p-4 text-2xl font-quran cursor-pointer text-amber-900 dark:text-amber-100 transition-colors ${i === activeSuggestionIndex ? 'bg-amber-200 dark:bg-amber-800' : 'hover:bg-amber-100 dark:hover:bg-amber-900'}`}
+                            className={`px-5 py-3 text-lg sm:text-xl font-quran cursor-pointer text-amber-900 dark:text-amber-100 transition-colors border-b border-amber-100/60 dark:border-amber-900/20 last:border-b-0 ${i === activeSuggestionIndex ? 'bg-amber-200/70 dark:bg-amber-800/60' : 'hover:bg-amber-100/70 dark:hover:bg-amber-900/40'}`}
                             onClick={() => {
                               setSearchText(sug);
                               setSuggestions([]);
@@ -2767,56 +2696,53 @@ function App() {
                     )}
 
                     {isListening && (
-                      <div className="px-6 py-2 bg-rose-500/10 border-t border-rose-500/20">
+                      <div className="px-5 py-2 bg-rose-500/10 border-t border-rose-500/20">
                         <AudioWaveform isListening={isListening} className="w-full justify-between" />
                       </div>
                     )}
 
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 bg-amber-50 dark:bg-amber-950/20 border-t border-amber-100 dark:border-amber-900/30">
-                      <div className="flex gap-3 w-full sm:w-auto justify-center sm:justify-start order-2 sm:order-1 items-center">
-                        <div className="relative">
-                          {isListening && (
-                            <span className="absolute -inset-1 rounded-2xl bg-rose-500/30 animate-ping"></span>
-                          )}
-                          <button 
-                            onClick={startVoiceInput} 
-                            disabled={isProcessingAudio}
-                            aria-label={isProcessingAudio ? 'جاري معالجة الصوت...' : isListening ? 'إيقاف الاستماع' : 'تحدث بالصوت'}
-                            className={`relative z-10 p-4 rounded-2xl transition-all ${isProcessingAudio ? 'bg-amber-200 text-amber-500 cursor-wait' : isListening ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/50 scale-105' : 'bg-amber-100 dark:bg-amber-900 text-amber-900 dark:text-amber-300 hover:bg-amber-200 shadow-sm'}`}
-                            title={isProcessingAudio ? 'جاري معالجة الصوت...' : isListening ? 'إيقاف الاستماع' : 'تحدث بالصوت'}
-                          >
-                            {isProcessingAudio ? <div className="w-7 h-7 border-3 border-amber-500 border-t-transparent rounded-full animate-spin"></div> : <Mic size={28} className={isListening ? 'animate-bounce' : ''} />}
-                          </button>
-                        </div>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 bg-amber-50/50 dark:bg-[#1e1a17] border-t border-amber-100 dark:border-amber-900/40">
+                      <div className="flex items-center gap-2 order-2 sm:order-1 justify-center sm:justify-start">
+                        <button 
+                          onClick={startVoiceInput} 
+                          disabled={isProcessingAudio}
+                          aria-label={isProcessingAudio ? 'جاري معالجة الصوت...' : isListening ? 'إيقاف الاستماع' : 'تحدث بالصوت'}
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isProcessingAudio ? 'bg-amber-200 text-amber-600 cursor-wait' : isListening ? 'bg-rose-600 text-white' : 'bg-white dark:bg-[#141210] text-amber-800 dark:text-amber-200 border border-amber-200/70 dark:border-amber-800/50 hover:bg-amber-100'}`}
+                          title={isProcessingAudio ? 'جاري معالجة الصوت...' : isListening ? 'إيقاف الاستماع' : 'تحدث بالصوت'}
+                        >
+                          {isProcessingAudio ? <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" /> : <Mic size={18} />}
+                        </button>
                         <button 
                           onClick={() => { setSearchText(''); setSuggestions([]); }} 
                           aria-label="مسح النص"
-                          className="p-4 rounded-2xl bg-amber-100 dark:bg-amber-900 text-amber-900 dark:text-amber-300 hover:bg-amber-200 transition-all shadow-sm"
+                          title="مسح النص"
+                          className="w-10 h-10 rounded-xl bg-white dark:bg-[#141210] text-amber-800 dark:text-amber-200 border border-amber-200/70 dark:border-amber-800/50 hover:bg-amber-100 flex items-center justify-center transition-colors"
                         >
-                          <Square size={24} />
+                          <Square size={16} />
                         </button>
                       </div>
-                        <div className="flex flex-col sm:flex-row gap-4 items-center w-full sm:w-auto order-1 sm:order-2">
-                          <div className="flex flex-col gap-1 w-full sm:w-auto">
-                            <label htmlFor="reciter-select" className="text-xs text-amber-950/70 mr-2">القارئ</label>
-                            <select 
-                              id="reciter-select"
-                              value={selectedReciter} 
-                              onChange={(e) => setSelectedReciter(e.target.value)} 
-                              className="w-full sm:w-auto bg-white dark:bg-gray-800 border-2 border-amber-100 dark:border-amber-900 rounded-2xl px-5 py-3 text-xl text-amber-950 dark:text-white font-bold focus:ring-2 focus:ring-amber-500 outline-none shadow-sm"
-                            >
-                              {RECITERS.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                            </select>
-                          </div>
-                          <button 
-                            onClick={() => handleSearchAndCorrect()} 
-                            disabled={isLoading || !searchText.trim()} 
-                            aria-label="بدء التلاوة والبحث"
-                            className="w-full sm:w-auto flex items-center justify-center gap-3 px-10 py-3 bg-amber-700 hover:bg-amber-800 text-white rounded-2xl shadow-xl disabled:opacity-50 transition-all transform hover:scale-105 active:scale-95 flex-shrink-0"
+
+                      <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center order-1 sm:order-2 flex-1 sm:justify-end">
+                        <div className="flex items-center gap-2">
+                          <label htmlFor="reciter-select" className="text-xs font-bold text-amber-800 dark:text-amber-300 whitespace-nowrap">القارئ:</label>
+                          <select 
+                            id="reciter-select"
+                            value={selectedReciter} 
+                            onChange={(e) => setSelectedReciter(e.target.value)} 
+                            className="flex-1 sm:w-56 h-10 bg-white dark:bg-[#141210] border border-amber-200 dark:border-amber-800/60 rounded-xl px-3 text-sm text-amber-950 dark:text-amber-50 font-bold focus:ring-2 focus:ring-amber-500/30 outline-none"
                           >
-                            {isLoading ? <div className="w-7 h-7 border-3 border-white border-t-transparent rounded-full animate-spin"></div> : <><Play size={24} fill="currentColor" /><span className="text-2xl font-bold">تلاوة</span></>}
-                          </button>
+                            {RECITERS.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                          </select>
                         </div>
+                        <button 
+                          onClick={() => handleSearchAndCorrect()} 
+                          disabled={isLoading || !searchText.trim()} 
+                          aria-label="بدء التلاوة والبحث"
+                          className="h-10 px-6 bg-amber-700 hover:bg-amber-800 text-white rounded-xl shadow-sm disabled:opacity-50 transition-colors flex items-center justify-center gap-2 font-bold text-sm whitespace-nowrap shrink-0"
+                        >
+                          {isLoading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Play size={16} fill="currentColor" /><span>بحث وتلاوة</span></>}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2825,528 +2751,448 @@ function App() {
                 <div aria-live="polite">
                   {searchResult && (
                     <motion.div 
-                      initial={{ opacity: 0, y: 20 }} 
+                      initial={{ opacity: 0, y: 12 }} 
                       animate={{ opacity: 1, y: 0 }} 
-                      className={`glass-effect p-8 md:p-12 rounded-[3rem] shadow-2xl border-2 border-amber-100 dark:border-amber-900/50 relative overflow-hidden custom-scrollbar ${isExpanded ? 'expanded-view' : 'max-h-[85vh] overflow-y-auto'}`}
+                      className={`bg-white/95 dark:bg-[#171412]/95 p-5 sm:p-7 rounded-2xl shadow-sm border border-amber-200/60 dark:border-amber-900/40 relative ${isExpanded ? 'expanded-view' : ''}`}
                     >
-                    <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-amber-300 via-amber-500 to-amber-700"></div>
-                    <div className="flex justify-between items-center mb-12">
-                      <h2 className="text-3xl font-bold text-amber-950 dark:text-amber-100 flex items-center gap-4">
-                        <div className="bg-amber-100 dark:bg-amber-900/50 p-2.5 rounded-2xl">
-                          <BookOpen size={28} className="text-amber-700 dark:text-amber-300" />
+                      <div className="flex flex-wrap justify-between items-center gap-3 pb-4 mb-6 border-b border-amber-100 dark:border-amber-900/30">
+                        <h2 className="text-lg sm:text-xl font-bold text-amber-950 dark:text-amber-50 flex items-center gap-2.5 font-kufi">
+                          <span className="w-9 h-9 rounded-xl bg-amber-100/80 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center">
+                            <BookOpen size={18} />
+                          </span>
+                          <span>نتائج البحث</span>
+                        </h2>
+                        <div className="flex items-center gap-2">
+                          <CommandActionButton onClick={() => openAIHubWithCommand('/')} />
+                          <SmartActionButton onClick={() => setShowAIHub(true)} />
+                          <button 
+                            onClick={() => setIsExpanded(!isExpanded)} 
+                            className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/25 text-amber-800 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-800/40 border border-amber-200/50 dark:border-amber-800/40 flex items-center justify-center transition-colors"
+                            title={isExpanded ? "تصغير" : "ملء الشاشة"}
+                            aria-label={isExpanded ? "تصغير" : "ملء الشاشة"}
+                          >
+                            {isExpanded ? <Minimize size={16} /> : <Maximize size={16} />}
+                          </button>
+                          <button 
+                            onClick={() => {
+                              if (isPlaying) {
+                                stopRecitation();
+                              } else if (searchResult.type === 'ayah') {
+                                playbackModeRef.current = 'single';
+                                playRealRecitation(searchResult.data.surah.id, searchResult.data.ayah.id);
+                              } else if (searchResult.type === 'surah') {
+                                playbackModeRef.current = 'continuous';
+                                playRealRecitation(searchResult.data.id, 1);
+                              } else {
+                                speakText(searchResult.text || '');
+                              }
+                            }} 
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${isPlaying ? 'bg-amber-700 text-white' : 'bg-amber-50 dark:bg-amber-900/25 text-amber-800 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-800/40 border border-amber-200/50 dark:border-amber-800/40'}`}
+                            title="استماع"
+                            aria-label="استماع"
+                          >
+                            <Volume2 size={16} />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              const textToCopy = searchResult.type === 'text' ? searchResult.text : (searchResult.type === 'surah' ? searchResult.data.verses.map((v: any) => v.text).join(' ') : searchResult.data.ayah.text);
+                              navigator.clipboard.writeText(textToCopy || '');
+                            }} 
+                            className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/25 text-amber-800 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-800/40 border border-amber-200/50 dark:border-amber-800/40 flex items-center justify-center transition-colors"
+                            title="نسخ النص"
+                            aria-label="نسخ النص"
+                          >
+                            <Copy size={16} />
+                          </button>
+                          <button 
+                            onClick={stopRecitation} 
+                            className="w-9 h-9 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 border border-red-200/50 dark:border-red-900/30 flex items-center justify-center transition-colors"
+                            title="إيقاف"
+                            aria-label="إيقاف"
+                          >
+                            <Square size={15} />
+                          </button>
                         </div>
-                        نتائج البحث
-                      </h2>
-                      <div className="flex gap-3">
-                        <CommandActionButton onClick={() => openAIHubWithCommand('/')} />
-                        <SmartActionButton onClick={() => setShowAIHub(true)} />
-                        <button 
-                          onClick={() => setIsExpanded(!isExpanded)} 
-                          className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800/40 p-3.5 rounded-2xl transition-all active:scale-95"
-                          title={isExpanded ? "تصغير" : "ملء الشاشة"}
-                        >
-                          {isExpanded ? <Minimize size={26} /> : <Maximize size={26} />}
-                        </button>
-                        <button 
-                          onClick={() => {
-                            if (isPlaying) {
-                              stopRecitation();
-                            } else if (searchResult.type === 'ayah') {
-                              playbackModeRef.current = 'single';
-                              playRealRecitation(searchResult.data.surah.id, searchResult.data.ayah.id);
-                            } else if (searchResult.type === 'surah') {
-                              playbackModeRef.current = 'continuous';
-                              playRealRecitation(searchResult.data.id, 1);
-                            } else {
-                              speakText(searchResult.text || '');
-                            }
-                          }} 
-                          className={`p-3.5 rounded-2xl transition-all active:scale-95 ${isPlaying ? 'bg-amber-700 text-white shadow-lg shadow-amber-900/30 animate-pulse' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800/40'}`}
-                          title="استماع"
-                        >
-                          <Volume2 size={26} />
-                        </button>
-                        <button 
-                          onClick={() => {
-                            const textToCopy = searchResult.type === 'text' ? searchResult.text : (searchResult.type === 'surah' ? searchResult.data.verses.map((v: any) => v.text).join(' ') : searchResult.data.ayah.text);
-                            navigator.clipboard.writeText(textToCopy || '');
-                          }} 
-                          className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800/40 p-3.5 rounded-2xl transition-all active:scale-95"
-                          title="نسخ النص"
-                        >
-                          <BookOpen size={26} />
-                        </button>
-                        <button 
-                          onClick={stopRecitation} 
-                          className="bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 p-3.5 rounded-2xl transition-all active:scale-95"
-                          title="إيقاف"
-                        >
-                          <Square size={26} />
-                        </button>
                       </div>
-                    </div>
-                    
-                    {searchResult.explanation && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/40 dark:to-emerald-900/20 backdrop-blur-md p-10 rounded-[3rem] border border-emerald-200 dark:border-emerald-800/50 shadow-lg relative overflow-hidden group mb-8"
-                      >
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-400/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-                        <div className="flex items-center justify-between mb-6 relative z-10">
-                          <h4 className="text-2xl font-bold text-emerald-900 dark:text-emerald-100 flex items-center gap-3">
-                            <div className="p-2 bg-emerald-500 rounded-xl text-white shadow-lg shadow-emerald-500/30">
-                              <Sparkles size={20} />
+                      
+                      {searchResult.explanation && (
+                        <div className="bg-emerald-50/60 dark:bg-emerald-950/25 p-4 sm:p-5 rounded-2xl border border-emerald-200/70 dark:border-emerald-800/40 mb-5">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm sm:text-base font-bold text-emerald-900 dark:text-emerald-100 flex items-center gap-2">
+                              <Sparkles size={16} className="text-emerald-600 dark:text-emerald-400" />
+                              <span>التفسير الميسر</span>
+                            </h4>
+                            <div className="flex gap-1.5">
+                              <SmartActionButton onClick={() => setShowAIHub(true)} size={15} />
+                              <button 
+                                onClick={() => isSpeaking ? stopSpeaking() : speakText(searchResult.explanation || "")}
+                                className="w-9 h-9 rounded-xl bg-white dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-700/50 flex items-center justify-center transition-colors"
+                                aria-label="قراءة التفسير"
+                              >
+                                {isSpeaking ? <Square size={15} className="text-red-500" /> : <Volume2 size={15} />}
+                              </button>
                             </div>
-                            التفسير الميسر
-                          </h4>
-                          <div className="flex gap-2">
-                            <SmartActionButton onClick={() => setShowAIHub(true)} size={18} />
-                            <button 
-                              onClick={() => isSpeaking ? stopSpeaking() : speakText(searchResult.explanation || "")}
-                              className="p-4 rounded-2xl bg-white dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200 hover:scale-110 transition-all shadow-md border border-emerald-200 dark:border-emerald-700 active:scale-95"
-                            >
-                              {isSpeaking ? <Square size={20} className="text-red-500" /> : <Volume2 size={20} />}
-                            </button>
                           </div>
-                        </div>
-                        <div className="relative z-10">
-                          <p className="text-2xl text-emerald-950 dark:text-emerald-50 leading-relaxed font-sans pr-6 border-r-4 border-emerald-400/50 dark:border-emerald-600/50 italic">
+                          <p className="text-sm sm:text-base text-emerald-950/90 dark:text-emerald-50/90 leading-relaxed font-sans">
                             {searchResult.explanation}
                           </p>
                         </div>
-                      </motion.div>
-                    )}
+                      )}
 
-                    {searchResult.qiraatDifferences && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/40 dark:to-blue-900/20 backdrop-blur-md p-10 rounded-[3rem] border border-blue-200 dark:border-blue-800/50 shadow-lg relative overflow-hidden group mb-8"
-                      >
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-400/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-                        <div className="flex items-center justify-between mb-6 relative z-10">
-                          <h4 className="text-2xl font-bold text-blue-900 dark:text-blue-100 flex items-center gap-3">
-                            <div className="p-2 bg-blue-500 rounded-xl text-white shadow-lg shadow-blue-500/30">
-                              <Layout size={20} />
+                      {searchResult.qiraatDifferences && (
+                        <div className="bg-sky-50/60 dark:bg-sky-950/25 p-4 sm:p-5 rounded-2xl border border-sky-200/70 dark:border-sky-800/40 mb-5">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm sm:text-base font-bold text-sky-900 dark:text-sky-100 flex items-center gap-2">
+                              <Layout size={16} className="text-sky-600 dark:text-sky-400" />
+                              <span>اختلاف القراءات</span>
+                            </h4>
+                            <div className="flex gap-1.5">
+                              <SmartActionButton onClick={() => setShowAIHub(true)} size={15} />
+                              <button 
+                                onClick={() => isSpeaking ? stopSpeaking() : speakText(searchResult.qiraatDifferences || "")}
+                                className="w-9 h-9 rounded-xl bg-white dark:bg-sky-900/50 text-sky-800 dark:text-sky-200 border border-sky-200 dark:border-sky-700/50 flex items-center justify-center transition-colors"
+                                aria-label="قراءة القراءات"
+                              >
+                                {isSpeaking ? <Square size={15} className="text-red-500" /> : <Volume2 size={15} />}
+                              </button>
                             </div>
-                            اختلاف القراءات
-                          </h4>
-                          <div className="flex gap-2">
-                            <SmartActionButton onClick={() => setShowAIHub(true)} size={18} />
-                            <button 
-                              onClick={() => isSpeaking ? stopSpeaking() : speakText(searchResult.qiraatDifferences || "")}
-                              className="p-4 rounded-2xl bg-white dark:bg-blue-800 text-blue-800 dark:text-blue-200 hover:scale-110 transition-all shadow-md border border-blue-200 dark:border-blue-700 active:scale-95"
-                            >
-                              {isSpeaking ? <Square size={20} className="text-red-500" /> : <Volume2 size={20} />}
-                            </button>
                           </div>
-                        </div>
-                        <div className="relative z-10">
-                          <p className="text-2xl text-blue-950 dark:text-blue-50 leading-relaxed font-sans pr-6 border-r-4 border-blue-400/50 dark:border-blue-600/50 italic">
+                          <p className="text-sm sm:text-base text-sky-950/90 dark:text-sky-50/90 leading-relaxed font-sans">
                             {searchResult.qiraatDifferences}
                           </p>
                         </div>
-                      </motion.div>
-                    )}
+                      )}
 
-                    {searchResult.metadata && Object.keys(searchResult.metadata).length > 0 && (
-                      <div className="mb-8 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                        {[
-                          { label: 'السورة', value: searchResult.metadata.surahName, icon: <BookOpen size={14} /> },
-                          { label: 'الجزء', value: searchResult.metadata.juz, icon: <Layout size={14} /> },
-                          { label: 'الحزب', value: searchResult.metadata.hizb, icon: <Hash size={14} /> },
-                          { label: 'النزول', value: searchResult.metadata.revelationType, icon: <Sparkles size={14} /> },
-                          { label: 'الكلمات', value: searchResult.metadata.words, icon: <Type size={14} /> },
-                          { label: 'الحروف', value: searchResult.metadata.letters, icon: <Type size={14} /> },
-                          { label: 'الحركات', value: searchResult.metadata.harakaat, icon: <Type size={14} /> },
-                          { label: 'الآيات', value: searchResult.metadata.verseCount, icon: <Hash size={14} /> },
-                          { label: 'الترتيب', value: searchResult.metadata.order, icon: <Hash size={14} /> },
-                        ].filter(item => item.value).map((item, idx) => (
-                          <motion.div 
-                            key={idx}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: idx * 0.05 }}
-                            className="bg-white/60 dark:bg-amber-950/40 backdrop-blur-sm p-5 rounded-3xl border border-amber-100 dark:border-amber-900/50 flex flex-col items-center text-center hover:bg-amber-50 dark:hover:bg-amber-900/60 transition-colors shadow-sm"
-                          >
-                            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-2 flex items-center gap-1">
-                              {item.icon}
-                              {item.label}
-                            </span>
-                            <span className="font-bold text-amber-900 dark:text-amber-100 text-xl">{item.value}</span>
-                          </motion.div>
-                        ))}
-                      </div>
-                    )}
-
-                    {searchResult.metadata?.asbab && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/40 dark:to-blue-900/20 backdrop-blur-md p-10 rounded-[3rem] border border-blue-200 dark:border-blue-800/50 shadow-lg relative overflow-hidden group mb-8"
-                      >
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-400/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-                        <div className="flex items-center justify-between mb-6 relative z-10">
-                          <h4 className="text-2xl font-bold text-blue-900 dark:text-blue-100 flex items-center gap-3">
-                            <div className="p-2 bg-blue-500 rounded-xl text-white shadow-lg shadow-blue-500/30">
-                              <Info size={20} />
-                            </div>
-                            سبب النزول
-                          </h4>
-                          <div className="flex gap-2">
-                            <SmartActionButton onClick={() => setShowAIHub(true)} size={18} />
-                            <button 
-                              onClick={() => isSpeaking ? stopSpeaking() : speakText(searchResult.metadata?.asbab || '')}
-                              className="p-4 rounded-2xl bg-white dark:bg-blue-800 text-blue-800 dark:text-blue-200 hover:scale-110 transition-all shadow-md border border-blue-200 dark:border-blue-700 active:scale-95"
+                      {searchResult.metadata && Object.keys(searchResult.metadata).length > 0 && (
+                        <div className="mb-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
+                          {[
+                            { label: 'السورة', value: searchResult.metadata.surahName, icon: <BookOpen size={13} /> },
+                            { label: 'الجزء', value: searchResult.metadata.juz, icon: <Layout size={13} /> },
+                            { label: 'الحزب', value: searchResult.metadata.hizb, icon: <Hash size={13} /> },
+                            { label: 'النزول', value: searchResult.metadata.revelationType, icon: <Sparkles size={13} /> },
+                            { label: 'الكلمات', value: searchResult.metadata.words, icon: <Type size={13} /> },
+                            { label: 'الحروف', value: searchResult.metadata.letters, icon: <Type size={13} /> },
+                            { label: 'الحركات', value: searchResult.metadata.harakaat, icon: <Type size={13} /> },
+                            { label: 'الآيات', value: searchResult.metadata.verseCount, icon: <Hash size={13} /> },
+                            { label: 'الترتيب', value: searchResult.metadata.order, icon: <Hash size={13} /> },
+                          ].filter(item => item.value).map((item, idx) => (
+                            <div 
+                              key={idx}
+                              className="bg-amber-50/60 dark:bg-[#1e1a17] p-3 rounded-xl border border-amber-200/40 dark:border-amber-900/30 flex flex-col items-center text-center"
                             >
-                              {isSpeaking ? <Square size={20} className="text-red-500" /> : <Volume2 size={20} />}
-                            </button>
-                          </div>
+                              <span className="text-xs font-medium text-amber-700/80 dark:text-amber-300/80 mb-1 flex items-center gap-1">
+                                {item.icon}
+                                {item.label}
+                              </span>
+                              <span className="font-bold text-amber-950 dark:text-amber-100 text-sm sm:text-base tabular-nums">{item.value}</span>
+                            </div>
+                          ))}
                         </div>
-                        <div className="relative z-10">
-                          <p className="text-2xl text-blue-950 dark:text-blue-50 leading-relaxed font-sans pr-6 border-r-4 border-blue-400/50 dark:border-blue-600/50 italic">
+                      )}
+
+                      {searchResult.metadata?.asbab && (
+                        <div className="bg-sky-50/60 dark:bg-sky-950/25 p-4 sm:p-5 rounded-2xl border border-sky-200/70 dark:border-sky-800/40 mb-5">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm sm:text-base font-bold text-sky-900 dark:text-sky-100 flex items-center gap-2">
+                              <Info size={16} className="text-sky-600 dark:text-sky-400" />
+                              <span>سبب النزول</span>
+                            </h4>
+                            <div className="flex gap-1.5">
+                              <SmartActionButton onClick={() => setShowAIHub(true)} size={15} />
+                              <button 
+                                onClick={() => isSpeaking ? stopSpeaking() : speakText(searchResult.metadata?.asbab || '')}
+                                className="w-9 h-9 rounded-xl bg-white dark:bg-sky-900/50 text-sky-800 dark:text-sky-200 border border-sky-200 dark:border-sky-700/50 flex items-center justify-center transition-colors"
+                                aria-label="قراءة سبب النزول"
+                              >
+                                {isSpeaking ? <Square size={15} className="text-red-500" /> : <Volume2 size={15} />}
+                              </button>
+                            </div>
+                          </div>
+                          <p className="text-sm sm:text-base text-sky-950/90 dark:text-sky-50/90 leading-relaxed font-sans">
                             {searchResult.metadata.asbab}
                           </p>
                         </div>
-                      </motion.div>
-                    )}
+                      )}
 
-                    {searchResult.type === 'surah' && searchResult.data && (
-                      <div className="space-y-12">
-                        <div className="text-center mb-16">
-                          <motion.div
-                            initial={{ opacity: 0, y: -20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="relative inline-block"
-                          >
-                            <h2 className="text-6xl md:text-8xl font-bold text-amber-900 dark:text-amber-100 font-quran mb-6 relative z-10 drop-shadow-sm">
+                      {searchResult.type === 'surah' && searchResult.data && (
+                        <div className="space-y-6">
+                          <div className="text-center pb-4 border-b border-amber-100 dark:border-amber-900/30">
+                            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-amber-950 dark:text-amber-50 font-quran mb-2">
                               {searchResult.data.name}
                             </h2>
-                            <div className="absolute -inset-6 bg-amber-300/20 dark:bg-amber-800/10 blur-3xl rounded-full -z-0"></div>
-                          </motion.div>
-                          
-                          <div className="flex flex-wrap justify-center items-center gap-4 mt-6">
-                            <div className="inline-flex items-center gap-4 px-8 py-3 bg-white/50 dark:bg-amber-900/20 backdrop-blur-sm rounded-full text-xl text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 shadow-lg">
-                              <span className="flex items-center gap-2">
-                                <div className={`w-3 h-3 rounded-full ${searchResult.data.revelationType === 'Meccan' ? 'bg-amber-500' : 'bg-emerald-500'}`}></div>
-                                {searchResult.data.revelationType === 'Meccan' ? 'مكية' : 'مدنية'}
-                              </span>
-                              <span className="w-px h-6 bg-amber-200 dark:bg-amber-800"></span>
-                              <span>{searchResult.data.verses.length} آية</span>
+                            <p className="text-xs sm:text-sm font-medium text-amber-800/75 dark:text-amber-200/75 tabular-nums">
+                              {searchResult.data.revelationType === 'Meccan' ? 'مكية' : 'مدنية'} · {searchResult.data.verses.length} آية
+                              {searchResult.metadata?.order ? ` · ترتيب النزول: ${searchResult.metadata.order}` : ''}
+                            </p>
+                          </div>
+
+                          {Number(searchResult.data.id) !== 9 && (
+                            <div className="text-center py-5 bg-amber-50/50 dark:bg-[#1e1a17]/60 rounded-2xl border border-amber-100 dark:border-amber-900/30">
+                              <p className="font-quran text-2xl sm:text-3xl text-amber-900 dark:text-amber-100">
+                                بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+                              </p>
                             </div>
-                            
-                            {searchResult.metadata?.order && (
-                              <div className="inline-flex items-center gap-3 px-8 py-3 bg-emerald-50/80 dark:bg-emerald-900/20 backdrop-blur-sm rounded-full text-xl text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 shadow-lg">
-                                <span className="font-bold">ترتيب النزول:</span>
-                                <span>{searchResult.metadata.order}</span>
+                          )}
+                          
+                          <Virtuoso
+                            useWindowScroll
+                            data={searchResult.data.verses}
+                            itemContent={(_index, ayah: any) => (
+                              <div className="pb-4">
+                                <div 
+                                  key={ayah.id} 
+                                  onClick={(e) => { 
+                                    if (e.detail === 3) {
+                                      handleTripleClick(searchResult.data, ayah);
+                                    } else {
+                                      playbackModeRef.current = 'single'; 
+                                      playRealRecitation(searchResult.data.id, ayah.id, ayah.id === 1); 
+                                      setAIContext(getEnrichedAIContext(searchResult.data, ayah));
+                                      logAIEvent(`الاستماع للآية ${ayah.id} من ${getSurahDisplayName(searchResult.data.name)}`, '🔊');
+                                    }
+                                  }}
+                                  className={`p-5 sm:p-6 rounded-2xl cursor-pointer transition-colors group border ${isPlaying && (activeAyah?.ayah === ayah.id || (activeAyah?.ayah === 0 && ayah.id === 1)) ? 'bg-amber-50 dark:bg-amber-900/30 border-amber-400 dark:border-amber-600' : 'bg-white dark:bg-[#1c1815] border-amber-200/50 dark:border-amber-900/40 hover:border-amber-300 dark:hover:border-amber-700'}`}
+                                >
+                                  <div className="flex flex-col gap-3">
+                                    <div className="flex items-center justify-between gap-2 pb-2 border-b border-amber-100/60 dark:border-amber-900/25">
+                                      <span className="text-xs font-bold text-amber-700 dark:text-amber-300 font-kufi tabular-nums">
+                                        آية {ayah.id}
+                                      </span>
+                                      <div className="flex items-center gap-1.5">
+                                        <ReadAloud text={ayah.text} />
+                                        <button 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            navigator.clipboard.writeText(ayah.text);
+                                          }}
+                                          className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 hover:bg-amber-100 flex items-center justify-center transition-colors"
+                                          title="نسخ الآية"
+                                        >
+                                          <Copy size={15} />
+                                        </button>
+                                        {navigator.share && (
+                                          <button 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              navigator.share({
+                                                title: `${getSurahDisplayName(searchResult.data.name)} - آية ${ayah.id}`,
+                                                text: `${ayah.text}\n[${getSurahDisplayName(searchResult.data.name)} - آية ${ayah.id}]`,
+                                              }).catch(console.error);
+                                            }}
+                                            className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 hover:bg-amber-100 flex items-center justify-center transition-colors"
+                                            title="مشاركة الآية"
+                                          >
+                                            <Share2 size={15} />
+                                          </button>
+                                        )}
+                                        <button 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setAIContext(getEnrichedAIContext(searchResult.data, ayah));
+                                            logAIEvent(`طلب مساعدة ذكية للآية ${ayah.id} من سورة ${searchResult.data.name}`, '✨');
+                                            setShowAIHub(true);
+                                          }}
+                                          className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-200 hover:bg-sky-100 flex items-center justify-center transition-colors"
+                                          title="اسأل الذكاء الاصطناعي"
+                                        >
+                                          <Sparkles size={15} />
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    <p className="text-right font-quran text-amber-950 dark:text-amber-50" style={{ fontSize: `${fontSize * 1.65}px`, lineHeight: '2.3' }} dir="rtl">
+                                      <TajweedText text={ayah.text} isTajweed={isTajweed} />
+                                      <span className="inline-flex items-center justify-center w-8 h-8 mx-2 text-xs border border-amber-400/70 dark:border-amber-700 rounded-full text-amber-800 dark:text-amber-200 font-bold bg-amber-50/70 dark:bg-amber-900/40 tabular-nums">
+                                        {ayah.id}
+                                      </span>
+                                    </p>
+
+                                    {selectedTranslation !== 'none' && translationsData[ayah.id] && (
+                                      <div className="text-left font-sans text-sm sm:text-base text-amber-900/80 dark:text-amber-100/75 leading-relaxed p-3.5 bg-amber-50/60 dark:bg-[#141210]/70 rounded-xl border border-amber-200/40 dark:border-amber-900/30 flex items-start justify-between gap-3">
+                                        <span className="flex-1" dir="ltr">{translationsData[ayah.id]}</span>
+                                        <div className="flex gap-1 shrink-0">
+                                          <button 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              isSpeaking ? stopSpeaking() : speakText(translationsData[ayah.id]);
+                                            }}
+                                            className="w-8 h-8 rounded-lg bg-white dark:bg-amber-900/40 text-amber-700 dark:text-amber-200 flex items-center justify-center"
+                                            title="قراءة الترجمة"
+                                          >
+                                            {isSpeaking ? <Square size={14} className="text-red-600" /> : <Volume2 size={14} />}
+                                          </button>
+                                          <button 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setAIContext(getEnrichedAIContext(searchResult.data, ayah));
+                                              logAIEvent(`طلب مساعدة ذكية للآية ${ayah.id} من ${getSurahDisplayName(searchResult.data.name)}`, '✨');
+                                              setShowAIHub(true);
+                                            }}
+                                            className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-900/40 text-sky-700 dark:text-sky-200 flex items-center justify-center"
+                                            title="اسأل الذكاء الاصطناعي"
+                                          >
+                                            <Sparkles size={14} />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
                             )}
-                          </div>
+                          />
                         </div>
+                      )}
 
-                        {/* Basmala for Surah search results (except Surah 9) */}
-                        {Number(searchResult.data.id) !== 9 && (
-                          <motion.div 
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="text-center py-16 mb-12 bg-gradient-to-b from-amber-50/80 to-transparent dark:from-amber-900/10 dark:to-transparent rounded-[4rem] border-t-2 border-amber-100 dark:border-amber-900/30 relative overflow-hidden"
-                          >
-                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-amber-400/5 rounded-full blur-3xl"></div>
-                            <p className="font-quran text-5xl md:text-6xl text-amber-950/90 dark:text-amber-50/90 leading-relaxed relative z-10">
-                              بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
-                            </p>
-                          </motion.div>
-                        )}
-                        
-                        <Virtuoso
-                          useWindowScroll
-                          data={searchResult.data.verses}
-                          itemContent={(index, ayah: any) => (
-                              <div className="pb-8">
-                              <div 
-                                key={ayah.id} 
-                                onClick={(e) => { 
-                                  if (e.detail === 3) {
-                                    handleTripleClick(searchResult.data, ayah);
-                                  } else {
-                                    playbackModeRef.current = 'single'; 
-                                    playRealRecitation(searchResult.data.id, ayah.id, ayah.id === 1); 
-                                    setAIContext(getEnrichedAIContext(searchResult.data, ayah));
-                                    logAIEvent(`الاستماع للآية ${ayah.id} من ${getSurahDisplayName(searchResult.data.name)}`, '🔊');
-                                  }
-                                }}
-                                className={`p-8 md:p-12 rounded-[3rem] cursor-pointer transition-all duration-500 group ${isPlaying && (activeAyah?.ayah === ayah.id || (activeAyah?.ayah === 0 && ayah.id === 1)) ? 'bg-amber-100 dark:bg-amber-900/40 border-2 border-amber-300 dark:border-amber-700 shadow-2xl transform scale-[1.02] z-10 relative' : 'bg-white/80 dark:bg-amber-950/80 backdrop-blur-sm border-2 border-amber-100 dark:border-amber-800/50 hover:border-amber-300 dark:hover:border-amber-700 hover:shadow-xl relative'}`}
-                              >
-                              <div className="flex flex-col gap-4">
-                                <p className="text-center md:text-right font-quran text-amber-950 dark:text-amber-50" style={{ fontSize: `${fontSize * 1.8}px`, lineHeight: '2.5' }} dir="rtl">
-                                  <TajweedText text={ayah.text} isTajweed={isTajweed} />
-                                  <span className="inline-flex items-center justify-center w-14 h-14 mx-4 text-2xl border-2 border-amber-300 dark:border-amber-700 rounded-full text-amber-700 dark:text-amber-300 font-bold bg-white dark:bg-amber-900/50 shadow-inner group-hover:border-amber-500 transition-colors">
-                                    {ayah.id}
-                                  </span>
+                      {searchResult.type === 'ayah' && searchResult.data && (
+                        <div className="space-y-4">
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-amber-50/70 dark:bg-[#1e1a17] p-4 sm:p-5 rounded-2xl border border-amber-200/50 dark:border-amber-900/40">
+                            <div className="flex items-center gap-3.5 text-right">
+                              <div className="w-11 h-11 bg-amber-700 rounded-xl flex items-center justify-center text-white text-base font-bold tabular-nums shrink-0">
+                                {searchResult.data.surah.id}
+                              </div>
+                              <div>
+                                <h3 className="text-xl sm:text-2xl font-bold text-amber-950 dark:text-amber-50 font-quran">
+                                  {getSurahDisplayName(searchResult.data.surah.name)}
+                                </h3>
+                                <p className="text-xs sm:text-sm font-medium text-amber-800/75 dark:text-amber-200/75 tabular-nums">
+                                  آية {searchResult.data.ayah.id} · {searchResult.data.surah.revelationType === 'Meccan' ? 'مكية' : 'مدنية'} · {searchResult.data.surah.verses.length} آية
                                 </p>
-
-                                {/* Action Bar */}
-                                <div className="absolute top-6 left-6 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
-                                  <ReadAloud text={ayah.text} />
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      navigator.clipboard.writeText(ayah.text);
-                                    }}
-                                    className="p-3 rounded-2xl bg-amber-200 dark:bg-amber-700 text-amber-800 dark:text-amber-200 hover:scale-110 transition-transform shadow-md"
-                                    title="نسخ الآية"
-                                  >
-                                    <Copy size={18} />
-                                  </button>
-                                  {navigator.share && (
-                                    <button 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        navigator.share({
-                                          title: `${getSurahDisplayName(searchResult.data.name)} - آية ${ayah.id}`,
-                                          text: `${ayah.text}\n[${getSurahDisplayName(searchResult.data.name)} - آية ${ayah.id}]`,
-                                        }).catch(console.error);
-                                      }}
-                                      className="p-3 rounded-2xl bg-amber-200 dark:bg-amber-700 text-amber-800 dark:text-amber-200 hover:scale-110 transition-transform shadow-md"
-                                      title="مشاركة الآية"
-                                    >
-                                      <Share2 size={18} />
-                                    </button>
-                                  )}
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setAIContext(getEnrichedAIContext(searchResult.data, ayah));
-                                      logAIEvent(`طلب مساعدة ذكية للآية ${ayah.id} من سورة ${searchResult.data.name}`, '✨');
-                                      setShowAIHub(true);
-                                    }}
-                                    className="p-3 rounded-2xl bg-sky-200 dark:bg-sky-800 text-sky-700 dark:text-sky-200 hover:scale-110 transition-transform shadow-md"
-                                    title="اسأل الذكاء الاصطناعي"
-                                  >
-                                    <Sparkles size={18} />
-                                  </button>
-                                </div>
-
-                                {selectedTranslation !== 'none' && translationsData[ayah.id] && (
-                                  <div className="text-left font-sans text-xl text-amber-900 dark:text-amber-100/70 leading-relaxed border-l-4 border-amber-300 dark:border-amber-700 pl-6 py-4 bg-amber-50/80 dark:bg-amber-900/10 rounded-r-2xl relative group/trans">
-                                    {translationsData[ayah.id]}
-                                    <div className="absolute right-4 top-4 flex flex-col gap-2 opacity-0 group-hover/trans:opacity-100 transition-opacity duration-300">
-                                      <button 
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          isSpeaking ? stopSpeaking() : speakText(translationsData[ayah.id]);
-                                        }}
-                                        className="p-2.5 rounded-xl bg-amber-100 dark:bg-amber-800 shadow-sm hover:scale-110 transition-transform"
-                                        title="قراءة الترجمة"
-                                      >
-                                        {isSpeaking ? <Square size={16} className="text-red-600" /> : <Volume2 size={16} className="text-amber-700 dark:text-amber-300" />}
-                                      </button>
-                                      <button 
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setAIContext(getEnrichedAIContext(searchResult.data, ayah));
-                                          logAIEvent(`طلب مساعدة ذكية للآية ${ayah.id} من ${getSurahDisplayName(searchResult.data.name)}`, '✨');
-                                          setShowAIHub(true);
-                                        }}
-                                        className="p-2.5 rounded-xl bg-sky-100 dark:bg-sky-800 shadow-sm text-sky-700 dark:text-sky-200 hover:scale-110 transition-transform"
-                                        title="اسأل الذكاء الاصطناعي"
-                                      >
-                                        <Sparkles size={16} />
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
                               </div>
                             </div>
+                            <button 
+                              onClick={() => {
+                                playbackModeRef.current = 'single'; 
+                                playRealRecitation(searchResult.data.surah.id, searchResult.data.ayah.id, searchResult.data.ayah.id === 1); 
+                                setAIContext(getEnrichedAIContext(searchResult.data.surah, searchResult.data.ayah));
+                                logAIEvent(`البحث عن آية في ${getSurahDisplayName(searchResult.data.surah.name)}`, '🔍');
+                              }}
+                              className="w-full sm:w-auto h-10 px-5 bg-amber-700 hover:bg-amber-800 text-white rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2 shrink-0"
+                            >
+                              <Play size={16} fill="currentColor" />
+                              <span>استماع للآية</span>
+                            </button>
                           </div>
-                        )}
-                        />
-                      </div>
-                    )}
 
-                    {searchResult.type === 'ayah' && searchResult.data && (
-                      <div className="space-y-10">
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-8 bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-900/40 p-12 rounded-[4rem] border-2 border-amber-200 dark:border-amber-800/50 shadow-2xl relative overflow-hidden group">
-                          <div className="absolute top-0 right-0 w-48 h-48 bg-amber-400/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform duration-700"></div>
-                          <div className="flex items-center gap-8 relative z-10">
-                            <div className="w-24 h-24 bg-gradient-to-br from-amber-500 to-amber-700 rounded-[2rem] flex items-center justify-center text-white text-4xl font-bold shadow-2xl shadow-amber-600/40 border-4 border-white/20 transform group-hover:rotate-6 transition-transform">
-                              {searchResult.data.surah.id}
+                          {searchResult.data.ayah.id === 1 && searchResult.data.surah.id !== 9 && (
+                            <div className="text-center py-4 bg-amber-50/40 dark:bg-[#1e1a17]/50 rounded-2xl border border-amber-100 dark:border-amber-900/30">
+                              <p className="font-quran text-2xl sm:text-3xl text-amber-900/80 dark:text-amber-100/80">
+                                بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+                              </p>
                             </div>
-                            <div>
-                              <h3 className="text-4xl font-bold text-amber-950 dark:text-amber-50 font-quran tracking-tight mb-2">
-                                {getSurahDisplayName(searchResult.data.surah.name)}
-                              </h3>
-                              <div className="flex flex-wrap items-center gap-4">
-                                <span className="px-5 py-2 bg-amber-600 text-white rounded-2xl text-lg font-bold shadow-lg shadow-amber-600/20">
-                                  آية {searchResult.data.ayah.id}
-                                </span>
-                                <span className="w-2 h-2 bg-amber-300 rounded-full"></span>
-                                <span className="text-lg font-medium text-amber-800/80 dark:text-amber-200/80">
-                                  {searchResult.data.surah.revelationType === 'Meccan' ? 'مكية' : 'مدنية'} • {searchResult.data.surah.verses.length} آية
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <button 
-                            onClick={() => {
-                              playbackModeRef.current = 'single'; 
-                              playRealRecitation(searchResult.data.surah.id, searchResult.data.ayah.id, searchResult.data.ayah.id === 1); 
-                              setAIContext(getEnrichedAIContext(searchResult.data.surah, searchResult.data.ayah));
-                              logAIEvent(`البحث عن آية في ${getSurahDisplayName(searchResult.data.surah.name)}`, '🔍');
-                            }}
-                            className="flex items-center gap-4 px-12 py-6 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white rounded-[2rem] font-bold text-xl transition-all shadow-2xl shadow-amber-600/30 hover:scale-105 active:scale-95 relative z-10 border-2 border-white/10"
-                          >
-                            <Play size={24} fill="currentColor" />
-                            <span>استماع للآية</span>
-                          </button>
-                        </div>
-
-                        {/* Basmala for first ayah results (except Surah 9) */}
-                        {searchResult.data.ayah.id === 1 && searchResult.data.surah.id !== 9 && (
-                          <motion.div 
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="text-center py-12 bg-amber-50/20 dark:bg-amber-900/5 rounded-[3rem] border border-amber-100/50 dark:border-amber-900/20"
-                          >
-                            <p className="font-quran text-4xl text-amber-900/50 dark:text-amber-100/50">
-                              بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
-                            </p>
-                          </motion.div>
-                        )}
-
-                        <motion.div 
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className={`group relative p-12 md:p-20 rounded-[5rem] cursor-pointer transition-all duration-700 ${isPlaying && (activeAyah?.ayah === searchResult.data.ayah.id || (activeAyah?.ayah === 0 && searchResult.data.ayah.id === 1)) ? 'bg-amber-100/95 dark:bg-amber-900/40 border-4 border-amber-400 dark:border-amber-600 shadow-2xl transform scale-[1.01] z-10' : 'bg-white/95 dark:bg-amber-950/95 backdrop-blur-lg border-4 border-amber-100 dark:border-amber-800/50 hover:border-amber-400 dark:hover:border-amber-600 hover:shadow-2xl'}`}
-                        >
-                          {searchResult.contextVerses ? (
-                            <div className="text-center md:text-right font-quran text-amber-950 dark:text-amber-50" style={{ fontSize: `${fontSize * 1.8}px`, lineHeight: '2.6' }} dir="rtl">
-                              {searchResult.contextVerses.map((v: any) => (
-                                <span key={v.id} className={v.id === searchResult.data.ayah.id ? "text-amber-800 dark:text-amber-200 font-bold drop-shadow-md" : "opacity-40 transition-all hover:opacity-100"}>
-                                  <TajweedText text={v.text} isTajweed={isTajweed} />
-                                  <span className={`inline-flex items-center justify-center w-14 h-14 mx-4 text-xl border-2 rounded-full transition-all ${v.id === searchResult.data.ayah.id ? 'border-amber-500 bg-amber-500 text-white shadow-lg' : 'border-amber-200 dark:border-amber-800'}`}>
-                                    {v.id}
-                                  </span>
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-center md:text-right font-quran text-amber-950 dark:text-amber-50" style={{ fontSize: `${fontSize * 2.4}px`, lineHeight: '2.8' }} dir="rtl">
-                              <TajweedText text={searchResult.data.ayah.text} isTajweed={isTajweed} />
-                              <span className="inline-flex items-center justify-center w-24 h-24 mx-8 text-4xl border-4 border-amber-400 dark:border-amber-600 rounded-full text-amber-800 dark:text-amber-200 font-bold bg-white dark:bg-amber-900/50 shadow-2xl group-hover:scale-110 transition-transform">
-                                {searchResult.data.ayah.id}
-                              </span>
-                            </p>
                           )}
 
-                          {/* Action Bar */}
-                          <div className="absolute top-6 left-6 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigator.clipboard.writeText(searchResult.data.ayah.text);
-                              }}
-                              className="p-3 rounded-2xl bg-amber-200 dark:bg-amber-700 text-amber-800 dark:text-amber-200 hover:scale-110 transition-transform shadow-md"
-                              title="نسخ الآية"
-                            >
-                              <Copy size={18} />
-                            </button>
-                            {navigator.share && (
+                          <div 
+                            className={`p-5 sm:p-7 rounded-2xl border transition-colors ${isPlaying && (activeAyah?.ayah === searchResult.data.ayah.id || (activeAyah?.ayah === 0 && searchResult.data.ayah.id === 1)) ? 'bg-amber-50 dark:bg-amber-900/30 border-amber-400 dark:border-amber-600' : 'bg-white dark:bg-[#1c1815] border-amber-200/60 dark:border-amber-900/40'}`}
+                          >
+                            <div className="flex items-center justify-end gap-1.5 mb-3 pb-2.5 border-b border-amber-100/70 dark:border-amber-900/30">
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  navigator.share({
-                                    title: `${getSurahDisplayName(searchResult.data.surah.name)} - آية ${searchResult.data.ayah.id}`,
-                                    text: `${searchResult.data.ayah.text}\n[${getSurahDisplayName(searchResult.data.surah.name)} - آية ${searchResult.data.ayah.id}]`,
-                                  }).catch(console.error);
+                                  navigator.clipboard.writeText(searchResult.data.ayah.text);
                                 }}
-                                className="p-3 rounded-2xl bg-amber-200 dark:bg-amber-700 text-amber-800 dark:text-amber-200 hover:scale-110 transition-transform shadow-md"
-                                title="مشاركة الآية"
+                                className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 hover:bg-amber-100 flex items-center justify-center transition-colors"
+                                title="نسخ الآية"
                               >
-                                <Share2 size={18} />
+                                <Copy size={15} />
                               </button>
-                            )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const isBookmarked = bookmarks.some(b => b.surah === searchResult.data.surah.id && b.ayah === searchResult.data.ayah.id);
-                                if (isBookmarked) {
-                                  setBookmarks(prev => prev.filter(b => !(b.surah === searchResult.data.surah.id && b.ayah === searchResult.data.ayah.id)));
-                                } else {
-                                  setBookmarks(prev => [...prev, {
-                                    surah: searchResult.data.surah.id,
-                                    ayah: searchResult.data.ayah.id,
-                                    text: searchResult.data.ayah.text,
-                                    surahName: searchResult.data.surah.name
-                                  }]);
-                                }
-                              }}
-                              className={`p-3 rounded-2xl hover:scale-110 transition-transform shadow-md ${
-                                bookmarks.some(b => b.surah === searchResult.data.surah.id && b.ayah === searchResult.data.ayah.id)
-                                  ? 'bg-amber-500 dark:bg-amber-600 text-white'
-                                  : 'bg-amber-200 dark:bg-amber-700 text-amber-800 dark:text-amber-200'
-                              }`}
-                              title={bookmarks.some(b => b.surah === searchResult.data.surah.id && b.ayah === searchResult.data.ayah.id) ? "إزالة من المحفوظات" : "حفظ الآية"}
-                            >
-                              <Star size={18} className={bookmarks.some(b => b.surah === searchResult.data.surah.id && b.ayah === searchResult.data.ayah.id) ? "fill-current" : ""} />
-                              {bookmarks.some(b => b.surah === searchResult.data.surah.id && b.ayah === searchResult.data.ayah.id) && (
-                                <motion.div 
-                                  layoutId={`glow-search-${searchResult.data.ayah.id}`}
-                                  className="absolute inset-0 rounded-2xl bg-amber-400 blur-md -z-10"
-                                  animate={{ opacity: [0.3, 0.6, 0.3], scale: [1, 1.3, 1] }}
-                                  transition={{ duration: 2, repeat: Infinity }}
-                                />
+                              {navigator.share && (
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigator.share({
+                                      title: `${getSurahDisplayName(searchResult.data.surah.name)} - آية ${searchResult.data.ayah.id}`,
+                                      text: `${searchResult.data.ayah.text}\n[${getSurahDisplayName(searchResult.data.surah.name)} - آية ${searchResult.data.ayah.id}]`,
+                                    }).catch(console.error);
+                                  }}
+                                  className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 hover:bg-amber-100 flex items-center justify-center transition-colors"
+                                  title="مشاركة الآية"
+                                >
+                                  <Share2 size={15} />
+                                </button>
                               )}
-                            </button>
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setAIContext(getEnrichedAIContext(searchResult.data.surah, searchResult.data.ayah));
-                                logAIEvent(`طلب مساعدة ذكية للآية ${searchResult.data.ayah.id} من سورة ${searchResult.data.surah.name}`, '✨');
-                                setShowAIHub(true);
-                              }}
-                              className="p-3 rounded-2xl bg-sky-200 dark:bg-sky-800 text-sky-700 dark:text-sky-200 hover:scale-110 transition-transform shadow-md"
-                              title="اسأل الذكاء الاصطناعي"
-                            >
-                              <Sparkles size={18} />
-                            </button>
-                          </div>
-                        </motion.div>
-
-                        {/* Translation Section */}
-                        {selectedTranslation !== 'none' && searchResult.metadata?.translation && (
-                          <div className="p-8 rounded-[2.5rem] bg-sky-50/80 dark:bg-sky-900/10 backdrop-blur-sm border border-sky-200/50 dark:border-sky-800/30 relative group overflow-hidden">
-                            <div className="absolute -right-4 -top-4 text-sky-500/5 dark:text-sky-400/5 group-hover:scale-110 transition-transform duration-500">
-                              <BookOpen size={120} />
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const isBookmarked = bookmarks.some(b => b.surah === searchResult.data.surah.id && b.ayah === searchResult.data.ayah.id);
+                                  if (isBookmarked) {
+                                    setBookmarks(prev => prev.filter(b => !(b.surah === searchResult.data.surah.id && b.ayah === searchResult.data.ayah.id)));
+                                  } else {
+                                    setBookmarks(prev => [...prev, {
+                                      surah: searchResult.data.surah.id,
+                                      ayah: searchResult.data.ayah.id,
+                                      text: searchResult.data.ayah.text,
+                                      surahName: searchResult.data.surah.name
+                                    }]);
+                                  }
+                                }}
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                                  bookmarks.some(b => b.surah === searchResult.data.surah.id && b.ayah === searchResult.data.ayah.id)
+                                    ? 'bg-amber-600 text-white'
+                                    : 'bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 hover:bg-amber-100'
+                                }`}
+                                title={bookmarks.some(b => b.surah === searchResult.data.surah.id && b.ayah === searchResult.data.ayah.id) ? "إزالة من المحفوظات" : "حفظ الآية"}
+                              >
+                                <Star size={15} className={bookmarks.some(b => b.surah === searchResult.data.surah.id && b.ayah === searchResult.data.ayah.id) ? "fill-current" : ""} />
+                              </button>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setAIContext(getEnrichedAIContext(searchResult.data.surah, searchResult.data.ayah));
+                                  logAIEvent(`طلب مساعدة ذكية للآية ${searchResult.data.ayah.id} من سورة ${searchResult.data.surah.name}`, '✨');
+                                  setShowAIHub(true);
+                                }}
+                                className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-200 hover:bg-sky-100 flex items-center justify-center transition-colors"
+                                title="اسأل الذكاء الاصطناعي"
+                              >
+                                <Sparkles size={15} />
+                              </button>
                             </div>
-                            <div className="relative z-10">
-                              <h4 className="text-sm font-bold text-sky-800 dark:text-sky-300 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                <span className="p-1.5 bg-sky-100 dark:bg-sky-800/50 rounded-lg">
-                                  <BookOpen size={16} className="text-sky-600 dark:text-sky-400" />
+
+                            {searchResult.contextVerses ? (
+                              <div className="text-right font-quran text-amber-950 dark:text-amber-50" style={{ fontSize: `${fontSize * 1.65}px`, lineHeight: '2.4' }} dir="rtl">
+                                {searchResult.contextVerses.map((v: any) => (
+                                  <span key={v.id} className={v.id === searchResult.data.ayah.id ? "text-amber-900 dark:text-amber-100 font-bold" : "opacity-55 hover:opacity-100 transition-opacity"}>
+                                    <TajweedText text={v.text} isTajweed={isTajweed} />
+                                    <span className={`inline-flex items-center justify-center w-8 h-8 mx-2 text-xs border rounded-full tabular-nums ${v.id === searchResult.data.ayah.id ? 'border-amber-600 bg-amber-600 text-white' : 'border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300'}`}>
+                                      {v.id}
+                                    </span>
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-right font-quran text-amber-950 dark:text-amber-50" style={{ fontSize: `${fontSize * 1.9}px`, lineHeight: '2.5' }} dir="rtl">
+                                <TajweedText text={searchResult.data.ayah.text} isTajweed={isTajweed} />
+                                <span className="inline-flex items-center justify-center w-9 h-9 mx-2.5 text-sm border-2 border-amber-500/70 rounded-full text-amber-800 dark:text-amber-200 font-bold bg-amber-50 dark:bg-amber-900/40 tabular-nums">
+                                  {searchResult.data.ayah.id}
                                 </span>
-                                الترجمة
-                              </h4>
-                              <div className="flex items-start gap-4">
-                                <p className="font-sans text-xl text-sky-950 dark:text-sky-50 leading-relaxed flex-1 text-left" dir="ltr">
-                                  {searchResult.metadata?.translation || ""}
-                                </p>
-                                <div className="flex flex-col gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Translation Section */}
+                          {selectedTranslation !== 'none' && searchResult.metadata?.translation && (
+                            <div className="p-4 sm:p-5 rounded-2xl bg-sky-50/60 dark:bg-sky-950/25 border border-sky-200/60 dark:border-sky-800/40">
+                              <div className="flex items-center justify-between mb-2">
+                                <h4 className="text-xs font-bold text-sky-800 dark:text-sky-300 flex items-center gap-1.5">
+                                  <BookOpen size={14} />
+                                  <span>الترجمة</span>
+                                </h4>
+                                <div className="flex items-center gap-1.5">
                                   <button 
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       navigator.clipboard.writeText(searchResult.metadata?.translation || "");
                                     }}
-                                    className="p-3 rounded-2xl bg-sky-100 dark:bg-sky-800 text-sky-700 dark:text-sky-200 hover:scale-110 transition-transform shadow-sm"
+                                    className="w-8 h-8 rounded-lg bg-white dark:bg-sky-900/40 text-sky-700 dark:text-sky-200 flex items-center justify-center"
                                     title="نسخ الترجمة"
                                   >
-                                    <Copy size={18} />
+                                    <Copy size={14} />
                                   </button>
                                   <ReadAloud 
                                     text={searchResult.metadata?.translation || ""} 
                                     lang="en-US" 
-                                    className="flex-col gap-3" 
-                                    buttonClassName="p-3 rounded-2xl bg-sky-100 dark:bg-sky-800 text-sky-700 dark:text-sky-200 hover:scale-110 transition-transform shadow-sm"
+                                    buttonClassName="w-8 h-8 rounded-lg bg-white dark:bg-sky-900/40 text-sky-700 dark:text-sky-200 flex items-center justify-center"
                                   />
                                   <button 
                                     onClick={(e) => {
@@ -3355,293 +3201,236 @@ function App() {
                                       logAIEvent(`طلب مساعدة ذكية للآية ${searchResult.data.ayah.id} من ${getSurahDisplayName(searchResult.data.surah.name)}`, '✨');
                                       setShowAIHub(true);
                                     }}
-                                    className="p-3 rounded-2xl bg-sky-100 dark:bg-sky-800 text-sky-700 dark:text-sky-200 hover:scale-110 transition-transform shadow-sm"
+                                    className="w-8 h-8 rounded-lg bg-white dark:bg-sky-900/40 text-sky-700 dark:text-sky-200 flex items-center justify-center"
                                     title="اسأل الذكاء الاصطناعي"
                                   >
-                                    <Sparkles size={18} />
+                                    <Sparkles size={14} />
                                   </button>
                                 </div>
                               </div>
+                              <p className="font-sans text-sm sm:text-base text-sky-950 dark:text-sky-50 leading-relaxed text-left" dir="ltr">
+                                {searchResult.metadata?.translation || ""}
+                              </p>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                          )}
+                        </div>
+                      )}
 
-                    {searchResult.type === 'text' && searchResult.text && (
-                      <motion.div 
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white/90 dark:bg-amber-950/90 backdrop-blur-md p-12 md:p-20 rounded-[5rem] border-2 border-amber-200 dark:border-amber-800/50 shadow-2xl relative overflow-hidden"
-                      >
-                        <div className="absolute top-0 left-0 w-64 h-64 bg-amber-400/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
-                        <div className="absolute bottom-0 right-0 w-64 h-64 bg-emerald-400/5 rounded-full blur-3xl translate-x-1/2 translate-y-1/2"></div>
-                        
-                        <div className="relative z-10 space-y-8 text-center md:text-right font-quran text-amber-950 dark:text-amber-50" style={{ fontSize: `${fontSize * 2}px`, lineHeight: '2.4' }} dir="rtl">
-                          {searchResult.text.split('\n').map((line, lIdx) => (
-                            <motion.p 
-                              key={lIdx} 
-                              initial={{ opacity: 0, x: 20 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: lIdx * 0.1 }}
-                              className="mb-6 last:mb-0 leading-relaxed"
-                            >
-                              <TajweedText text={line} isTajweed={isTajweed} />
-                            </motion.p>
-                          ))}
-                        </div>
-                        
-                        <div className="mt-12 pt-8 border-t border-amber-100 dark:border-amber-900/30 flex justify-center">
-                          <div className="px-6 py-2 bg-amber-50 dark:bg-amber-900/20 rounded-full text-sm font-bold text-amber-700 dark:text-amber-400">
-                            نص مصحح ومدقق لغوياً
+                      {searchResult.type === 'text' && searchResult.text && (
+                        <div className="bg-amber-50/40 dark:bg-[#1e1a17] p-5 sm:p-7 rounded-2xl border border-amber-200/50 dark:border-amber-900/40">
+                          <div className="space-y-4 text-right font-quran text-amber-950 dark:text-amber-50" style={{ fontSize: `${fontSize * 1.65}px`, lineHeight: '2.3' }} dir="rtl">
+                            {searchResult.text.split('\n').map((line, lIdx) => (
+                              <p key={lIdx} className="leading-relaxed">
+                                <TajweedText text={line} isTajweed={isTajweed} />
+                              </p>
+                            ))}
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-amber-200/50 dark:border-amber-900/30 text-center">
+                            <span className="text-xs font-bold text-amber-700 dark:text-amber-300">
+                              نص مصحح ومدقق لغوياً
+                            </span>
                           </div>
                         </div>
-                      </motion.div>
-                    )}
-                  </motion.div>
-                )}
+                      )}
+                    </motion.div>
+                  )}
               </div>
             </motion.div>
           ) : viewMode === 'browse' ? (
-              <motion.div key="browse" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+              <motion.div key="browse" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-5">
                 {!selectedSurah ? (
-                  <div className="space-y-8">
-                    {/* Surah Search Bar */}
-                    <div className="relative max-w-xl mx-auto mb-10">
-                      <div className="absolute right-5 top-1/2 -translate-y-1/2 text-amber-600/60 dark:text-amber-400/60 pointer-events-none">
-                        <Search size={22} />
+                  <div className="space-y-5">
+                    {/* Surah Search Header */}
+                    <div className="bg-white/95 dark:bg-[#171412]/95 p-4 sm:p-5 rounded-2xl border border-amber-200/50 dark:border-amber-900/40 shadow-sm">
+                      <div className="relative max-w-xl mx-auto">
+                        <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-amber-600/70 dark:text-amber-400/70 pointer-events-none">
+                          <Search size={18} />
+                        </div>
+                        <label htmlFor="surah-search-input" className="sr-only">البحث عن سورة</label>
+                        <input 
+                          id="surah-search-input"
+                          type="text" 
+                          placeholder="ابحث عن سورة بالاسم أو الرقم..." 
+                          value={surahSearch}
+                          onChange={(e) => setSurahSearch(e.target.value)}
+                          className="w-full h-11 pr-10 pl-10 bg-amber-50/50 dark:bg-[#141210] rounded-xl border border-amber-200/70 dark:border-amber-800/60 text-sm sm:text-base text-amber-950 dark:text-amber-50 font-bold text-right focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 outline-none placeholder:text-amber-900/40 dark:placeholder:text-amber-100/35"
+                          dir="rtl"
+                          lang="ar"
+                        />
+                        {surahSearch && (
+                          <button 
+                            onClick={() => setSurahSearch('')}
+                            aria-label="مسح البحث"
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-600/70 hover:text-amber-800 dark:text-amber-400/70"
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
                       </div>
-                      <label htmlFor="surah-search-input" className="sr-only">البحث عن سورة</label>
-                      <input 
-                        id="surah-search-input"
-                        type="text" 
-                        placeholder="ابحث عن سورة بالاسم أو الرقم..." 
-                        value={surahSearch}
-                        onChange={(e) => setSurahSearch(e.target.value)}
-                        className="w-full pr-14 pl-6 py-4 bg-white/80 dark:bg-[#1c1917]/80 backdrop-blur-md rounded-2xl shadow-sm border border-amber-200/60 dark:border-amber-800/50 text-xl text-amber-950 dark:text-amber-50 font-bold text-right focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 outline-none transition-all duration-300 placeholder:text-amber-900/30 dark:placeholder:text-amber-100/30"
-                        dir="rtl"
-                        lang="ar"
-                      />
-                      {surahSearch && (
-                        <button 
-                          onClick={() => setSurahSearch('')}
-                          aria-label="مسح البحث"
-                          className="absolute left-5 top-1/2 -translate-y-1/2 text-amber-600/60 hover:text-amber-800 dark:text-amber-400/60 dark:hover:text-amber-200 transition-colors"
-                        >
-                          <X size={20} />
-                        </button>
-                      )}
                     </div>
 
-                    {/* Surah Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[70vh] overflow-y-auto custom-scrollbar p-2">
-                      {filteredSurahs.map((surah, index) => (
-                        <motion.button
+                    {/* Natural Responsive Surah Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {filteredSurahs.map((surah) => (
+                        <button
                           key={surah.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.02, duration: 0.3 }}
-                          whileHover={{ scale: 1.02, y: -2 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => {
-                            handleSurahSelect(surah);
-                          }}
-                          className="p-5 glass-effect rounded-[1.5rem] shadow-sm hover:shadow-md border border-amber-100/50 dark:border-amber-900/30 text-right flex justify-between items-center group relative overflow-hidden bg-white/60 dark:bg-[#1c1917]/60 transition-all duration-300"
+                          onClick={() => handleSurahSelect(surah)}
+                          className="p-4 bg-white/95 dark:bg-[#171412]/95 hover:bg-amber-50/70 dark:hover:bg-[#1e1a17] rounded-2xl shadow-sm border border-amber-200/50 dark:border-amber-900/40 hover:border-amber-300 dark:hover:border-amber-700 text-right flex items-center justify-between gap-3 transition-colors group"
                         >
-                          <div className="absolute -left-6 -bottom-6 text-7xl text-amber-900/5 dark:text-amber-100/5 group-hover:text-amber-900/10 dark:group-hover:text-amber-100/10 transition-colors duration-500 rotate-12 group-hover:rotate-0">۞</div>
-                          <div className="bg-gradient-to-br from-amber-100 to-amber-50 dark:from-amber-900/60 dark:to-amber-900/20 w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold text-amber-800 dark:text-amber-200 shadow-inner border border-amber-200/50 dark:border-amber-700/30 group-hover:scale-110 transition-transform duration-300">{surah.id}</div>
-                          <div className="text-right z-10">
-                            <div className="text-xl font-kufi font-bold text-amber-950 dark:text-amber-50 group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors">{surah.name}</div>
-                            <div className="text-xs font-medium text-amber-800/60 dark:text-amber-400/50 mt-1">{surah.total_verses} آية</div>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-amber-100/80 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 flex items-center justify-center text-sm font-bold tabular-nums shrink-0 border border-amber-200/50 dark:border-amber-800/40">
+                              {surah.id}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-base sm:text-lg font-kufi font-bold text-amber-950 dark:text-amber-50 truncate group-hover:text-amber-700 dark:group-hover:text-amber-300">
+                                {surah.name}
+                              </div>
+                              <div className="text-xs text-amber-800/65 dark:text-amber-300/60 tabular-nums">
+                                {surah.total_verses} آية
+                              </div>
+                            </div>
                           </div>
-                        </motion.button>
+                          <ChevronLeft size={16} className="text-amber-600/50 group-hover:text-amber-700 shrink-0" />
+                        </button>
                       ))}
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-8">
-                    {/* Surah Header Controls */}
-                    <div className="flex flex-col lg:flex-row items-center justify-between glass-effect p-6 md:p-8 rounded-[2.5rem] shadow-xl border border-amber-100 dark:border-amber-900 gap-8 relative z-10">
-                      
-                      {/* Top/Right Controls: Back, Play, Share */}
-                      <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 w-full lg:w-auto order-2 lg:order-1">
-                        <motion.button 
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={(e) => { 
-                            e.preventDefault();
-                            try { stopRecitation(); } catch (err) { console.error(err); }
-                            localStorage.removeItem('quran_selectedSurahId');
-                            setSelectedSurah(null); 
-                          }} 
-                          className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl shadow-lg hover:shadow-amber-500/30 transition-all font-bold text-base sm:text-lg w-full sm:w-auto"
-                        >
-                          <ChevronRight size={24} /> عودة للقائمة
-                        </motion.button>
-                        
-                        <motion.button 
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (isPlaying && playbackModeRef.current === 'continuous') {
-                              stopRecitation();
-                            } else {
-                              playbackModeRef.current = 'continuous';
-                              playRealRecitation(selectedSurah.id, 1, true);
-                            }
-                          }} 
-                          className={`flex items-center justify-center gap-2 px-5 py-3 rounded-2xl transition-all font-bold text-base sm:text-lg w-full sm:w-auto ${isPlaying && playbackModeRef.current === 'continuous' ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg' : 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg'}`}
-                        >
-                          {isPlaying && playbackModeRef.current === 'continuous' ? <Square fill="currentColor" size={24} /> : <Play fill="currentColor" size={24} />}
-                          {isPlaying && playbackModeRef.current === 'continuous' ? 'إيقاف السورة' : 'تشغيل السورة'}
-                        </motion.button>
-                        
-                        {navigator.share && (
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
+                  <div className="space-y-5">
+                    {/* Structured Surah Reader Toolbar */}
+                    <div className="bg-white/95 dark:bg-[#171412]/95 p-4 sm:p-5 rounded-2xl shadow-sm border border-amber-200/60 dark:border-amber-900/40 space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-amber-100 dark:border-amber-900/30">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button 
+                            onClick={(e) => { 
+                              e.preventDefault();
+                              try { stopRecitation(); } catch (err) { console.error(err); }
+                              localStorage.removeItem('quran_selectedSurahId');
+                              setSelectedSurah(null); 
+                            }} 
+                            className="h-9 px-3.5 bg-amber-700 hover:bg-amber-800 text-white rounded-xl transition-colors font-bold text-xs sm:text-sm inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                          >
+                            <ChevronRight size={16} />
+                            <span>السور</span>
+                          </button>
+                          
+                          <button 
                             onClick={(e) => {
                               e.preventDefault();
-                              navigator.share({
-                                title: `${getSurahDisplayName(selectedSurah.name)}`,
-                                text: `اقرأ واستمع إلى ${getSurahDisplayName(selectedSurah.name)} من القرآن الكريم.`,
-                                url: window.location.href,
-                              }).catch(console.error);
-                            }}
-                            className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-sky-500 to-sky-600 text-white rounded-2xl shadow-lg hover:shadow-sky-500/30 transition-all font-bold text-base sm:text-lg w-full sm:w-auto"
-                            title="مشاركة السورة"
+                              if (isPlaying && playbackModeRef.current === 'continuous') {
+                                stopRecitation();
+                              } else {
+                                playbackModeRef.current = 'continuous';
+                                playRealRecitation(selectedSurah.id, 1, true);
+                              }
+                            }} 
+                            className={`h-9 px-3.5 rounded-xl transition-colors font-bold text-xs sm:text-sm inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 ${isPlaying && playbackModeRef.current === 'continuous' ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}`}
                           >
-                            <Share2 size={24} /> مشاركة
-                          </motion.button>
-                        )}
-                      </div>
-                      
-                      {/* Center: Surah Info */}
-                      <div id="surah-header" className="text-center order-1 lg:order-2 w-full lg:w-auto">
-                        <h2 className="text-4xl md:text-5xl font-bold text-amber-950 dark:text-amber-300 mb-2 font-quran">{selectedSurah.name}</h2>
-                        <div className="text-amber-950/70 dark:text-amber-200/70 text-base md:text-lg flex items-center justify-center gap-2 flex-wrap">
-                          <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/50 rounded-full">{selectedSurah.type === 'Meccan' ? 'مكية' : 'مدنية'}</span>
-                          <span>•</span>
-                          <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/50 rounded-full">{selectedSurah.total_verses} آية</span>
-                          <span>•</span>
-                          <span className="px-3 py-1 bg-amber-200 dark:bg-amber-800/50 text-amber-800 dark:text-amber-200 font-bold rounded-full">{QIRAAT.find(q => q.id === selectedQiraat)?.name}</span>
+                            {isPlaying && playbackModeRef.current === 'continuous' ? <Square fill="currentColor" size={14} /> : <Play fill="currentColor" size={14} />}
+                            <span>{isPlaying && playbackModeRef.current === 'continuous' ? 'إيقاف السورة' : 'تشغيل السورة'}</span>
+                          </button>
+                          
+                          {navigator.share && (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                navigator.share({
+                                  title: `${getSurahDisplayName(selectedSurah.name)}`,
+                                  text: `اقرأ واستمع إلى ${getSurahDisplayName(selectedSurah.name)} من القرآن الكريم.`,
+                                  url: window.location.href,
+                                }).catch(console.error);
+                              }}
+                              className="h-9 px-3.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl transition-colors font-bold text-xs sm:text-sm inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                              title="مشاركة السورة"
+                            >
+                              <Share2 size={14} />
+                              <span>مشاركة</span>
+                            </button>
+                          )}
+                        </div>
+
+                        <div id="surah-header" className="text-right sm:text-center flex-1">
+                          <h2 className="text-2xl sm:text-3xl font-bold text-amber-950 dark:text-amber-50 font-quran">{selectedSurah.name}</h2>
+                          <p className="text-xs font-medium text-amber-800/75 dark:text-amber-200/70 tabular-nums">
+                            {selectedSurah.type === 'Meccan' ? 'مكية' : 'مدنية'} · {selectedSurah.total_verses} آية · {QIRAAT.find(q => q.id === selectedQiraat)?.name}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 justify-end">
+                          <SmartActionButton onClick={() => setShowAIHub(true)} />
+                          <button 
+                            onClick={() => setIsExpanded(!isExpanded)} 
+                            className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/25 text-amber-800 dark:text-amber-200 border border-amber-200/60 dark:border-amber-800/40 flex items-center justify-center transition-colors"
+                            title={isExpanded ? "تصغير" : "ملء الشاشة"}
+                          >
+                            {isExpanded ? <Minimize size={16} /> : <Maximize size={16} />}
+                          </button>
                         </div>
                       </div>
 
-                      {/* Bottom/Left Controls: Selects and Toggles */}
-                      <div className="flex flex-wrap items-center justify-center lg:justify-end gap-4 w-full lg:w-auto order-3">
-                        <div className="flex flex-col gap-1 w-full sm:w-auto">
-                          <label className="text-xs text-amber-950/70 dark:text-amber-200/70 mr-2 font-bold">القارئ</label>
-                          <select value={selectedReciter} onChange={(e) => setSelectedReciter(e.target.value)} className="bg-white dark:bg-[#1c1917] border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-2.5 text-sm md:text-base text-amber-950 dark:text-white font-bold outline-none focus:ring-2 focus:ring-amber-500 shadow-sm cursor-pointer w-full">
+                      {/* Controls Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 items-end">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs text-amber-800 dark:text-amber-300 font-bold">القارئ</label>
+                          <select value={selectedReciter} onChange={(e) => setSelectedReciter(e.target.value)} className="h-9 bg-amber-50/40 dark:bg-[#141210] border border-amber-200 dark:border-amber-800/60 rounded-xl px-2.5 text-xs sm:text-sm text-amber-950 dark:text-white font-semibold outline-none focus:ring-2 focus:ring-amber-500/30">
                             {RECITERS.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                           </select>
                         </div>
-                        <div className="flex flex-col gap-1 w-full sm:w-auto">
-                          <label className="text-xs text-amber-950/70 dark:text-amber-200/70 mr-2 font-bold">التفسير</label>
-                          <select value={selectedTafsir} onChange={(e) => setSelectedTafsir(e.target.value)} className="bg-white dark:bg-[#1c1917] border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-2.5 text-sm md:text-base text-amber-950 dark:text-white font-bold outline-none focus:ring-2 focus:ring-amber-500 shadow-sm cursor-pointer w-full">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs text-amber-800 dark:text-amber-300 font-bold">التفسير</label>
+                          <select value={selectedTafsir} onChange={(e) => setSelectedTafsir(e.target.value)} className="h-9 bg-amber-50/40 dark:bg-[#141210] border border-amber-200 dark:border-amber-800/60 rounded-xl px-2.5 text-xs sm:text-sm text-amber-950 dark:text-white font-semibold outline-none focus:ring-2 focus:ring-amber-500/30">
                             <option value="">بدون تفسير</option>
                             {TAFASIR.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                           </select>
                         </div>
-                        <div className="flex flex-col gap-1 w-full sm:w-auto">
-                          <label className="text-xs text-amber-950/70 dark:text-amber-200/70 mr-2 font-bold">الترجمة</label>
-                          <select value={selectedTranslation} onChange={(e) => setSelectedTranslation(e.target.value)} className="bg-white dark:bg-[#1c1917] border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-2.5 text-sm md:text-base text-amber-950 dark:text-white font-bold outline-none focus:ring-2 focus:ring-amber-500 shadow-sm cursor-pointer w-full">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs text-amber-800 dark:text-amber-300 font-bold">الترجمة</label>
+                          <select value={selectedTranslation} onChange={(e) => setSelectedTranslation(e.target.value)} className="h-9 bg-amber-50/40 dark:bg-[#141210] border border-amber-200 dark:border-amber-800/60 rounded-xl px-2.5 text-xs sm:text-sm text-amber-950 dark:text-white font-semibold outline-none focus:ring-2 focus:ring-amber-500/30">
                             <option value="none">بدون ترجمة</option>
                             {TRANSLATIONS.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                           </select>
                         </div>
-                        <div className="flex flex-col gap-1 w-full sm:w-auto">
-                          <label className="text-xs text-amber-950/70 dark:text-amber-200/70 mr-2 font-bold">القراءة</label>
-                          <select value={selectedQiraat} onChange={(e) => setSelectedQiraat(e.target.value)} className="bg-white dark:bg-[#1c1917] border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-2.5 text-sm md:text-base text-amber-950 dark:text-white font-bold outline-none focus:ring-2 focus:ring-amber-500 shadow-sm cursor-pointer w-full">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs text-amber-800 dark:text-amber-300 font-bold">القراءة</label>
+                          <select value={selectedQiraat} onChange={(e) => setSelectedQiraat(e.target.value)} className="h-9 bg-amber-50/40 dark:bg-[#141210] border border-amber-200 dark:border-amber-800/60 rounded-xl px-2.5 text-xs sm:text-sm text-amber-950 dark:text-white font-semibold outline-none focus:ring-2 focus:ring-amber-500/30">
                             {QIRAAT.map(q => <option key={q.id} value={q.id}>{q.name}</option>)}
                           </select>
                         </div>
-                        <div className="flex items-center justify-center gap-2 mt-2 sm:mt-6 w-full sm:w-auto">
-                          <motion.button 
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
+                        <div className="flex items-center gap-1.5 col-span-2 sm:col-span-1">
+                          <button 
                             onClick={() => setIsTajweed(!isTajweed)} 
-                            className={`px-5 py-2.5 rounded-xl border-2 transition-all font-bold text-sm md:text-base flex-1 sm:flex-none ${isTajweed ? 'bg-gradient-to-r from-amber-600 to-amber-700 border-transparent text-white shadow-md' : 'bg-white dark:bg-[#1c1917] border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300'}`}
+                            className={`flex-1 h-9 px-3 rounded-xl border transition-colors font-bold text-xs sm:text-sm whitespace-nowrap ${isTajweed ? 'bg-amber-700 border-amber-700 text-white' : 'bg-white dark:bg-[#141210] border-amber-200 dark:border-amber-800/60 text-amber-800 dark:text-amber-200'}`}
                           >
                             تجويد ملون
-                          </motion.button>
-                          <motion.button 
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
+                          </button>
+                          <button 
                             onClick={() => setShowTajweedInfo(true)} 
-                            className="p-2.5 rounded-xl border-2 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors bg-white dark:bg-[#1c1917]"
+                            className="w-9 h-9 rounded-xl border border-amber-200 dark:border-amber-800/60 text-amber-800 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 flex items-center justify-center bg-white dark:bg-[#141210] shrink-0"
                             title="معلومات التجويد"
                           >
-                            <Info size={20} />
-                          </motion.button>
+                            <Info size={16} />
+                          </button>
                         </div>
                       </div>
                     </div>
 
-                    {/* Verse Display */}
-                    <div className={`bg-white dark:bg-[#1c1917] p-8 md:p-16 rounded-t-[10rem] rounded-b-[2rem] shadow-2xl border-[12px] border-amber-100/50 dark:border-amber-900/30 relative overflow-hidden quran-bg islamic-border mihrab-arch ${isExpanded ? 'expanded-view' : ''}`}>
-                      {/* Mihrab Arch Decoration */}
-                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-5xl h-80 opacity-20 pointer-events-none">
-                        <svg viewBox="0 0 400 200" className="w-full h-full fill-amber-900 dark:fill-amber-400">
-                          <path d="M0,200 L0,100 C0,44.77 89.54,0 200,0 C310.46,0 400,44.77 400,100 L400,200 Z" />
-                          <path d="M20,200 L20,110 C20,60.29 100.59,20 200,20 C299.41,20 380,60.29 380,110 L380,200 Z" opacity="0.5" />
-                          <path d="M40,200 L40,120 C40,75.82 111.64,40 200,40 C288.36,40 360,75.82 360,120 L360,200 Z" opacity="0.3" />
-                        </svg>
-                      </div>
-
-                      {/* Expand/Smart Buttons for Browse Mode */}
-                      <div className="absolute top-8 left-8 flex gap-3 z-30">
-                        <SmartActionButton onClick={() => setShowAIHub(true)} />
-                        <button 
-                          onClick={() => setIsExpanded(!isExpanded)} 
-                          className="bg-amber-100/80 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 p-3 rounded-xl backdrop-blur-sm border border-amber-200 dark:border-amber-800 shadow-sm hover:scale-110 transition-all"
-                          title={isExpanded ? "تصغير" : "ملء الشاشة"}
-                        >
-                          {isExpanded ? <Minimize size={24} /> : <Maximize size={24} />}
-                        </button>
-                      </div>
-
-                      {/* Side Pillars - More prominent */}
-                      <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-amber-900/20 via-amber-900/5 to-transparent pointer-events-none border-r border-amber-900/10"></div>
-                      <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-amber-900/20 via-amber-900/5 to-transparent pointer-events-none border-l border-amber-900/10"></div>
-                      
-                      {/* Top Ornament Decoration */}
-                      <div className="absolute top-12 left-1/2 -translate-x-1/2 z-20 opacity-40 pointer-events-none select-none flex items-center justify-center gap-6">
-                        <div className="w-12 md:w-24 h-[2px] bg-gradient-to-r from-transparent to-amber-900 dark:to-amber-400"></div>
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-amber-900 dark:text-amber-400 drop-shadow-md">
-                          <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" fill="currentColor"/>
-                        </svg>
-                        <div className="w-12 md:w-24 h-[2px] bg-gradient-to-l from-transparent to-amber-900 dark:to-amber-400"></div>
-                      </div>
-
-                      {/* Top Glow */}
-                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 bg-amber-400/20 blur-[100px] pointer-events-none"></div>
-
-                      <div className="absolute inset-0 opacity-[0.05] pointer-events-none select-none">
-                        <div className="grid grid-cols-10 gap-8 p-12">
-                          {Array.from({ length: 100 }).map((_, i) => <div key={i} className="text-5xl text-amber-900 font-quran">۞</div>)}
-                        </div>
-                      </div>
-
-                      <div className="relative z-10 max-w-5xl mx-auto pt-32 pb-16 px-4 md:px-8">
-                        {/* Prepend Basmala if it's the first page of a Surah (except At-Tawbah and Al-Fatiha) */}
+                    {/* Reading Sheet */}
+                    <div className={`bg-white/95 dark:bg-[#171412]/95 p-5 sm:p-8 md:p-10 rounded-2xl shadow-sm border border-amber-200/60 dark:border-amber-900/40 relative quran-bg ${isExpanded ? 'expanded-view' : ''}`}>
+                      <div className="max-w-4xl mx-auto">
+                        {/* Basmala */}
                         {currentPage === 1 && Number(selectedSurah.id) !== 9 && (Number(selectedSurah.id) !== 1 || selectedQiraat === 'warsh') && (
-                          <div className="text-center mb-12 py-8 border-b border-amber-100 dark:border-amber-900/30">
-                            <motion.div 
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              className="text-4xl md:text-6xl font-quran text-amber-900 dark:text-amber-200 drop-shadow-sm"
-                            >
+                          <div className="text-center mb-8 pb-6 border-b border-amber-100 dark:border-amber-900/30">
+                            <p className="text-2xl sm:text-3xl md:text-4xl font-quran text-amber-900 dark:text-amber-200">
                               بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
-                            </motion.div>
+                            </p>
                           </div>
                         )}
+
                         <div 
                           className="font-quran text-amber-950 dark:text-amber-50" 
                           style={{ 
-                            fontSize: `${fontSize * 2.2}px`, 
-                            lineHeight: selectedTranslation === 'none' ? '2.2' : '2.8',
+                            fontSize: `${fontSize * 1.95}px`, 
+                            lineHeight: selectedTranslation === 'none' ? '2.25' : '2.4',
                             textAlign: selectedTranslation === 'none' ? 'justify' : 'right',
                             textJustify: selectedTranslation === 'none' ? 'inter-word' : 'auto'
                           }} 
@@ -3688,25 +3477,21 @@ function App() {
                                     }, 600);
                                     (e.currentTarget as any)._longPressTimer = timer;
                                   }}
-                                  onTouchEnd={(e) => {
-                                    clearTimeout((e.currentTarget as any)._longPressTimer);
-                                  }}
-                                  onTouchMove={(e) => {
-                                    clearTimeout((e.currentTarget as any)._longPressTimer);
-                                  }}
-                                  className={`cursor-pointer transition-colors duration-300 ${activeAyah?.surah === selectedSurah.id && (activeAyah?.ayah === ayah.id || (activeAyah?.ayah === 0 && ayah.id === 1)) ? 'text-amber-600 dark:text-amber-400 bg-amber-100/50 dark:bg-amber-900/40 rounded-lg' : 'hover:text-amber-700 dark:hover:text-amber-300'}`}
+                                  onTouchEnd={(e) => clearTimeout((e.currentTarget as any)._longPressTimer)}
+                                  onTouchMove={(e) => clearTimeout((e.currentTarget as any)._longPressTimer)}
+                                  className={`cursor-pointer transition-colors duration-200 ${activeAyah?.surah === selectedSurah.id && (activeAyah?.ayah === ayah.id || (activeAyah?.ayah === 0 && ayah.id === 1)) ? 'text-amber-700 dark:text-amber-300 bg-amber-100/70 dark:bg-amber-900/40 rounded-lg px-1' : 'hover:text-amber-700 dark:hover:text-amber-300'}`}
                                 >
                                   <TajweedText text={ayah.text} isTajweed={isTajweed} />
-                                  <span className="inline-flex items-center justify-center mx-2 text-[0.4em] border border-amber-600/50 rounded-full text-amber-800/70 dark:text-amber-400/70 font-bold bg-amber-50/50 dark:bg-amber-900/20" style={{ width: '2em', height: '2em', transform: 'translateY(-0.2em)' }}>
+                                  <span className="inline-flex items-center justify-center mx-1.5 text-[0.42em] border border-amber-600/50 rounded-full text-amber-800/80 dark:text-amber-300/80 font-bold bg-amber-50/70 dark:bg-amber-900/25 tabular-nums" style={{ width: '2em', height: '2em', transform: 'translateY(-0.15em)' }}>
                                     {ayah.id}
                                   </span>
                                 </span>
                               ))}
                             </div>
                           ) : (
-                            <div className="flex flex-col gap-6">
+                            <div className="flex flex-col gap-4">
                               {selectedSurah.verses.slice((currentPage - 1) * VERSES_PER_PAGE, currentPage * VERSES_PER_PAGE).map((ayah) => (
-                                <span 
+                                <div 
                                   key={ayah.id}
                                   id={`ayah-${ayah.id}`}
                                   onClick={(e) => { 
@@ -3744,142 +3529,105 @@ function App() {
                                     }, 600);
                                     (e.currentTarget as any)._longPressTimer = timer;
                                   }}
-                                  onTouchEnd={(e) => {
-                                    clearTimeout((e.currentTarget as any)._longPressTimer);
-                                  }}
-                                  onTouchMove={(e) => {
-                                    clearTimeout((e.currentTarget as any)._longPressTimer);
-                                  }}
-                                  className={`group cursor-pointer px-4 py-4 rounded-3xl transition-all duration-500 hover:bg-amber-100 dark:hover:bg-amber-900/40 block m-1.5 ${activeAyah?.surah === selectedSurah.id && (activeAyah?.ayah === ayah.id || (activeAyah?.ayah === 0 && ayah.id === 1)) ? 'bg-amber-200 dark:bg-amber-800 shadow-2xl ring-8 ring-amber-500/20 scale-[1.02] z-20 relative' : 'relative'}`}
+                                  onTouchEnd={(e) => clearTimeout((e.currentTarget as any)._longPressTimer)}
+                                  onTouchMove={(e) => clearTimeout((e.currentTarget as any)._longPressTimer)}
+                                  className={`group cursor-pointer p-4 sm:p-5 rounded-2xl border transition-colors ${activeAyah?.surah === selectedSurah.id && (activeAyah?.ayah === ayah.id || (activeAyah?.ayah === 0 && ayah.id === 1)) ? 'bg-amber-50 dark:bg-amber-900/30 border-amber-400 dark:border-amber-600' : 'bg-amber-50/20 dark:bg-[#1c1815] border-amber-100 dark:border-amber-900/30 hover:border-amber-300 dark:hover:border-amber-700'}`}
                                 >
-                                  <div className="flex flex-col gap-4">
-                                    <div className="text-right leading-[2.8] relative overflow-hidden rounded-3xl">
-                                      {/* Active Ayah Glow in Mihrab */}
-                                      {activeAyah?.surah === selectedSurah.id && activeAyah?.ayah === ayah.id && (
-                                        <motion.div 
-                                          layoutId="mihrab-active-glow"
-                                          className="absolute inset-0 bg-amber-400/10 blur-xl rounded-full -z-10"
-                                          animate={{ opacity: [0.2, 0.4, 0.2] }}
-                                          transition={{ duration: 2, repeat: Infinity }}
-                                        />
-                                      )}
-                                      <TajweedText text={ayah.text} isTajweed={isTajweed} />
-                                      <span className="inline-flex items-center justify-center w-14 h-14 mx-4 text-2xl border-2 border-amber-600 rounded-full text-amber-800 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-900/30 shadow-inner">
-                                        {ayah.id}
-                                      </span>
-                                    </div>
-                                    
-                                    {/* Action Bar */}
-                                    <div className="absolute top-4 left-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
-                                      <button 
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          analyzeQiraat(selectedSurah.id, ayah.id, ayah.text);
-                                        }}
-                                        className="p-2 rounded-full bg-amber-200 dark:bg-amber-700 text-amber-800 dark:text-amber-200 hover:scale-110 transition-transform shadow-sm"
-                                        title="تحليل القراءات"
-                                      >
-                                        <BookOpen size={16} />
-                                      </button>
-                                      <button 
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleTafsirSelect(selectedTafsir, selectedSurah.id, ayah.id);
-                                        }}
-                                        className="p-2 rounded-full bg-amber-200 dark:bg-amber-700 text-amber-800 dark:text-amber-200 hover:scale-110 transition-transform shadow-sm"
-                                        title="تفسير"
-                                      >
-                                        <Info size={16} />
-                                      </button>
-                                      <ReadAloud 
-                                        text={ayah.text} 
-                                        buttonClassName="p-2 rounded-full bg-amber-200 dark:bg-amber-700 text-amber-800 dark:text-amber-200 hover:scale-110 transition-transform shadow-sm"
-                                      />
-                                      <button 
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          navigator.clipboard.writeText(ayah.text);
-                                        }}
-                                        className="p-2 rounded-full bg-amber-200 dark:bg-amber-700 text-amber-800 dark:text-amber-200 hover:scale-110 transition-transform shadow-sm"
-                                        title="نسخ الآية"
-                                      >
-                                        <Copy size={16} />
-                                      </button>
-                                      {navigator.share && (
+                                  <div className="flex flex-col gap-3">
+                                    <div className="flex items-center justify-between gap-2 pb-2 border-b border-amber-100/70 dark:border-amber-900/25">
+                                      <span className="text-xs font-bold text-amber-700 dark:text-amber-300 font-kufi tabular-nums">آية {ayah.id}</span>
+                                      <div className="flex items-center gap-1 flex-wrap">
+                                        <button 
+                                          onClick={(e) => { e.stopPropagation(); analyzeQiraat(selectedSurah.id, ayah.id, ayah.text); }}
+                                          className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 hover:bg-amber-100 flex items-center justify-center transition-colors"
+                                          title="تحليل القراءات"
+                                        >
+                                          <BookOpen size={14} />
+                                        </button>
+                                        <button 
+                                          onClick={(e) => { e.stopPropagation(); handleTafsirSelect(selectedTafsir, selectedSurah.id, ayah.id); }}
+                                          className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 hover:bg-amber-100 flex items-center justify-center transition-colors"
+                                          title="تفسير"
+                                        >
+                                          <Info size={14} />
+                                        </button>
+                                        <ReadAloud text={ayah.text} buttonClassName="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 hover:bg-amber-100 flex items-center justify-center transition-colors" />
+                                        <button 
+                                          onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(ayah.text); }}
+                                          className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 hover:bg-amber-100 flex items-center justify-center transition-colors"
+                                          title="نسخ الآية"
+                                        >
+                                          <Copy size={14} />
+                                        </button>
+                                        {navigator.share && (
+                                          <button 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              navigator.share({
+                                                title: `${getSurahDisplayName(selectedSurah.name)} - آية ${ayah.id}`,
+                                                text: `${ayah.text}\n[${getSurahDisplayName(selectedSurah.name)} - آية ${ayah.id}]`,
+                                              }).catch(console.error);
+                                            }}
+                                            className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 hover:bg-amber-100 flex items-center justify-center transition-colors"
+                                            title="مشاركة الآية"
+                                          >
+                                            <Share2 size={14} />
+                                          </button>
+                                        )}
                                         <button 
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            navigator.share({
-                                              title: `${getSurahDisplayName(selectedSurah.name)} - آية ${ayah.id}`,
-                                              text: `${ayah.text}\n[${getSurahDisplayName(selectedSurah.name)} - آية ${ayah.id}]`,
-                                            }).catch(console.error);
+                                            const isBookmarked = bookmarks.some(b => b.surah === selectedSurah.id && b.ayah === ayah.id);
+                                            if (isBookmarked) {
+                                              setBookmarks(prev => prev.filter(b => !(b.surah === selectedSurah.id && b.ayah === ayah.id)));
+                                            } else {
+                                              setBookmarks(prev => [...prev, { surah: selectedSurah.id, ayah: ayah.id, text: ayah.text, surahName: selectedSurah.name }]);
+                                            }
                                           }}
-                                          className="p-2 rounded-full bg-amber-200 dark:bg-amber-700 text-amber-800 dark:text-amber-200 hover:scale-110 transition-transform shadow-sm"
-                                          title="مشاركة الآية"
+                                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${bookmarks.some(b => b.surah === selectedSurah.id && b.ayah === ayah.id) ? 'bg-amber-600 text-white' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 hover:bg-amber-100'}`}
+                                          title="حفظ الآية"
                                         >
-                                          <Share2 size={16} />
+                                          <Star size={14} fill={bookmarks.some(b => b.surah === selectedSurah.id && b.ayah === ayah.id) ? 'currentColor' : 'none'} />
                                         </button>
-                                      )}
-                                      <button 
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          const isBookmarked = bookmarks.some(b => b.surah === selectedSurah.id && b.ayah === ayah.id);
-                                          if (isBookmarked) {
-                                            setBookmarks(prev => prev.filter(b => !(b.surah === selectedSurah.id && b.ayah === ayah.id)));
-                                          } else {
-                                            setBookmarks(prev => [...prev, { surah: selectedSurah.id, ayah: ayah.id, text: ayah.text, surahName: selectedSurah.name }]);
-                                          }
-                                        }}
-                                        className={`p-2 rounded-full transition-transform shadow-sm hover:scale-110 ${bookmarks.some(b => b.surah === selectedSurah.id && b.ayah === ayah.id) ? 'bg-amber-600 text-white' : 'bg-amber-200 dark:bg-amber-700 text-amber-800 dark:text-amber-200'}`}
-                                        title="حفظ الآية"
-                                      >
-                                        <Star size={16} fill={bookmarks.some(b => b.surah === selectedSurah.id && b.ayah === ayah.id) ? 'currentColor' : 'none'} />
-                                        {bookmarks.some(b => b.surah === selectedSurah.id && b.ayah === ayah.id) && (
-                                          <motion.div 
-                                            layoutId={`glow-surah-${ayah.id}`}
-                                            className="absolute inset-0 rounded-full bg-amber-400 blur-md -z-10"
-                                            animate={{ opacity: [0.3, 0.6, 0.3], scale: [1, 1.3, 1] }}
-                                            transition={{ duration: 2, repeat: Infinity }}
-                                          />
-                                        )}
-                                      </button>
-                                      <button 
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setAIContext(getEnrichedAIContext(selectedSurah, ayah));
-                                          logAIEvent(`طلب مساعدة ذكية للآية ${ayah.id} من سورة ${selectedSurah.name}`, '✨');
-                                          setShowAIHub(true);
-                                        }}
-                                        className="p-2 rounded-full bg-sky-200 dark:bg-sky-800 text-sky-700 dark:text-sky-200 hover:scale-110 transition-transform shadow-sm"
-                                        title="اسأل الذكاء الاصطناعي"
-                                      >
-                                        <Sparkles size={16} />
-                                      </button>
+                                        <button 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setAIContext(getEnrichedAIContext(selectedSurah, ayah));
+                                            logAIEvent(`طلب مساعدة ذكية للآية ${ayah.id} من سورة ${selectedSurah.name}`, '✨');
+                                            setShowAIHub(true);
+                                          }}
+                                          className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-200 hover:bg-sky-100 flex items-center justify-center transition-colors"
+                                          title="اسأل الذكاء الاصطناعي"
+                                        >
+                                          <Sparkles size={14} />
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    <div className="text-right leading-[2.4]">
+                                      <TajweedText text={ayah.text} isTajweed={isTajweed} />
+                                      <span className="inline-flex items-center justify-center w-8 h-8 mx-2 text-xs border border-amber-500/70 rounded-full text-amber-800 dark:text-amber-300 font-bold bg-amber-50 dark:bg-amber-900/30 tabular-nums">
+                                        {ayah.id}
+                                      </span>
                                     </div>
 
                                     {selectedTranslation !== 'none' && translationsData[ayah.id] && (
-                                      <div className={`text-left ${fontFamily} text-xl text-amber-900 dark:text-amber-100/70 leading-relaxed border-l-4 border-amber-300 dark:border-amber-700 pl-6 py-2 bg-amber-50 dark:bg-amber-900/10 rounded-r-2xl relative group/trans`}>
-                                        {translationsData[ayah.id]}
-                                        <div className="absolute right-2 top-2 flex gap-2 opacity-0 group-hover/trans:opacity-100 transition-opacity">
+                                      <div className={`text-left ${fontFamily} text-sm sm:text-base text-amber-900/80 dark:text-amber-100/75 leading-relaxed p-3.5 bg-amber-50/60 dark:bg-[#141210]/70 rounded-xl border border-amber-200/40 dark:border-amber-900/30 flex items-start justify-between gap-2`}>
+                                        <span className="flex-1" dir="ltr">{translationsData[ayah.id]}</span>
+                                        <div className="flex gap-1 shrink-0">
                                           <button 
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              navigator.clipboard.writeText(translationsData[ayah.id]);
-                                            }}
-                                            className="p-2 rounded-lg bg-amber-100 dark:bg-amber-800 shadow-sm text-amber-700 dark:text-amber-300"
+                                            onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(translationsData[ayah.id]); }}
+                                            className="w-7 h-7 rounded-lg bg-white dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center"
                                             title="نسخ الترجمة"
                                           >
-                                            <Copy size={14} />
+                                            <Copy size={13} />
                                           </button>
                                           <button 
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              isSpeaking ? stopSpeaking() : speakText(translationsData[ayah.id]);
-                                            }}
-                                            className="p-2 rounded-lg bg-amber-100 dark:bg-amber-800 shadow-sm"
+                                            onClick={(e) => { e.stopPropagation(); isSpeaking ? stopSpeaking() : speakText(translationsData[ayah.id]); }}
+                                            className="w-7 h-7 rounded-lg bg-white dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center"
                                             title="قراءة الترجمة"
                                           >
-                                            {isSpeaking ? <Square size={14} className="text-red-600" /> : <Volume2 size={14} className="text-amber-700 dark:text-amber-300" />}
+                                            {isSpeaking ? <Square size={13} className="text-red-600" /> : <Volume2 size={13} />}
                                           </button>
                                           <button 
                                             onClick={(e) => {
@@ -3888,16 +3636,16 @@ function App() {
                                               logAIEvent(`طلب مساعدة ذكية للآية ${ayah.id} من ${getSurahDisplayName(selectedSurah.name)}`, '✨');
                                               setShowAIHub(true);
                                             }}
-                                            className="p-2 rounded-lg bg-sky-100 dark:bg-sky-800 shadow-sm text-sky-700 dark:text-sky-200"
+                                            className="w-7 h-7 rounded-lg bg-sky-50 dark:bg-sky-900/40 text-sky-700 dark:text-sky-200 flex items-center justify-center"
                                             title="اسأل الذكاء الاصطناعي"
                                           >
-                                            <Sparkles size={14} />
+                                            <Sparkles size={13} />
                                           </button>
                                         </div>
                                       </div>
                                     )}
                                   </div>
-                                </span>
+                                </div>
                               ))}
                             </div>
                           )}
@@ -3905,20 +3653,20 @@ function App() {
 
                         {/* Pagination Controls */}
                         {selectedSurah.verses.length > VERSES_PER_PAGE && (
-                          <div className="flex justify-center items-center gap-6 mt-16 mb-8" dir="rtl">
+                          <div className="flex justify-center items-center gap-3 mt-8 pt-6 border-t border-amber-100 dark:border-amber-900/30" dir="rtl">
                             <button
                               onClick={() => {
                                 setCurrentPage(p => Math.min(Math.ceil(selectedSurah.verses.length / VERSES_PER_PAGE), p + 1));
                                 document.getElementById('surah-header')?.scrollIntoView({ behavior: 'smooth' });
                               }}
                               disabled={currentPage === Math.ceil(selectedSurah.verses.length / VERSES_PER_PAGE)}
-                              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 disabled:opacity-50 hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors font-bold shadow-sm"
+                              className="h-9 flex items-center gap-1.5 px-4 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-100 disabled:opacity-45 hover:bg-amber-200 transition-colors font-bold text-xs sm:text-sm"
                             >
-                              <span>الصفحة التالية</span>
-                              <ChevronLeft size={20} />
+                              <span>التالي</span>
+                              <ChevronLeft size={16} />
                             </button>
                             
-                            <span className="text-amber-900 dark:text-amber-100 font-bold bg-amber-50 dark:bg-amber-900/20 px-4 py-2 rounded-xl border border-amber-200 dark:border-amber-800/50">
+                            <span className="text-xs sm:text-sm text-amber-900 dark:text-amber-100 font-bold bg-amber-50 dark:bg-amber-900/20 px-3.5 py-1.5 rounded-xl border border-amber-200/60 dark:border-amber-800/40 tabular-nums">
                               {currentPage} / {Math.ceil(selectedSurah.verses.length / VERSES_PER_PAGE)}
                             </span>
 
@@ -3928,62 +3676,40 @@ function App() {
                                 document.getElementById('surah-header')?.scrollIntoView({ behavior: 'smooth' });
                               }}
                               disabled={currentPage === 1}
-                              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 disabled:opacity-50 hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors font-bold shadow-sm"
+                              className="h-9 flex items-center gap-1.5 px-4 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-100 disabled:opacity-45 hover:bg-amber-200 transition-colors font-bold text-xs sm:text-sm"
                             >
-                              <ChevronRight size={20} />
-                              <span>الصفحة السابقة</span>
+                              <ChevronRight size={16} />
+                              <span>السابق</span>
                             </button>
                           </div>
                         )}
                       </div>
                     </div>
-
-                    {/* Tafsir Panel removed as it now opens in AI Hub */}
                   </div>
                 )}
               </motion.div>
             ) : viewMode === 'duas' ? (
-              <motion.div key="duas" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
-                <div className={`transition-all duration-500 ${isExpanded ? 'expanded-view p-8 md:p-16' : ''}`}>
-                  <div className="absolute top-8 left-8 flex gap-3 z-30">
-                    <SmartActionButton onClick={() => setShowAIHub(true)} />
-                    <button 
-                      onClick={() => setIsExpanded(!isExpanded)} 
-                      className="bg-amber-100/80 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 p-3 rounded-xl backdrop-blur-sm border border-amber-200 dark:border-amber-800 shadow-sm hover:scale-110 transition-all"
-                      title={isExpanded ? "تصغير" : "ملء الشاشة"}
-                    >
-                      {isExpanded ? <Minimize size={24} /> : <Maximize size={24} />}
-                    </button>
-                  </div>
-                  <DuaSection speakText={speakText} stopSpeaking={stopSpeaking} isSpeaking={isSpeaking} />
-                </div>
+              <motion.div key="duas" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+                <DuaSection speakText={speakText} stopSpeaking={stopSpeaking} isSpeaking={isSpeaking} />
               </motion.div>
             ) : viewMode === 'qibla' ? (
-              <motion.div key="qibla" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+              <motion.div key="qibla" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
                 <QiblaSection />
               </motion.div>
             ) : viewMode === 'tasbih' ? (
-              <motion.div key="tasbih" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
+              <motion.div key="tasbih" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
                 <TasbihSection />
               </motion.div>
             ) : viewMode === 'bookmarks' ? (
-              <motion.div key="bookmarks" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-                <div className={`space-y-8 mx-auto transition-all duration-500 ${isExpanded ? 'expanded-view p-8 md:p-16' : 'max-w-4xl'}`}>
-                  <div className="text-center space-y-4 relative">
-                    <div className="absolute top-0 left-0 flex gap-3 z-30">
-                      <SmartActionButton onClick={() => setShowAIHub(true)} />
-                      <button 
-                        onClick={() => setIsExpanded(!isExpanded)} 
-                        className="bg-amber-100/80 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 p-3 rounded-xl backdrop-blur-sm border border-amber-200 dark:border-amber-800 shadow-sm hover:scale-110 transition-all"
-                        title={isExpanded ? "تصغير" : "ملء الشاشة"}
-                      >
-                        {isExpanded ? <Minimize size={24} /> : <Maximize size={24} />}
-                      </button>
+              <motion.div key="bookmarks" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+                <div className="space-y-5 max-w-4xl mx-auto">
+                  <div className="bg-white/95 dark:bg-[#171412]/95 rounded-2xl border border-amber-200/50 dark:border-amber-900/40 shadow-sm p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h2 className="text-xl sm:text-2xl font-bold text-amber-950 dark:text-amber-50 font-kufi">الآيات المحفوظة</h2>
+                      <p className="text-xs sm:text-sm text-amber-800/70 dark:text-amber-200/65 mt-0.5">الآيات التي قمت بحفظها للرجوع إليها سريعاً</p>
                     </div>
-                    <h2 className="text-5xl font-black text-amber-900 dark:text-amber-100">المحفوظات</h2>
-                    <p className="text-xl text-amber-800 dark:text-amber-400/60">الآيات التي قمت بحفظها للرجوع إليها لاحقاً</p>
                     {bookmarks.length > 0 && (
-                      <div className="flex justify-center gap-4 mt-4">
+                      <div className="flex items-center gap-2">
                         {navigator.share && (
                           <button
                             onClick={() => {
@@ -3993,21 +3719,17 @@ function App() {
                                 text: text,
                               }).catch(console.error);
                             }}
-                            className="px-6 py-2 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors inline-flex items-center gap-2"
+                            className="h-9 px-3.5 rounded-xl bg-amber-100/80 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 hover:bg-amber-200/70 transition-colors inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold whitespace-nowrap"
                           >
-                            <Share2 size={18} />
+                            <Share2 size={15} />
                             <span>مشاركة الكل</span>
                           </button>
                         )}
                         <button
-                          onClick={() => {
-                            if (true) {
-                              setBookmarks([]);
-                            }
-                          }}
-                          className="px-6 py-2 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors inline-flex items-center gap-2"
+                          onClick={() => setBookmarks([])}
+                          className="h-9 px-3.5 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200/60 dark:border-red-900/40 hover:bg-red-100 transition-colors inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold whitespace-nowrap"
                         >
-                          <X size={18} />
+                          <X size={15} />
                           <span>مسح الكل</span>
                         </button>
                       </div>
@@ -4015,45 +3737,40 @@ function App() {
                   </div>
                   
                   {bookmarks.length === 0 ? (
-                    <div className="bg-white dark:bg-[#1c1917] p-12 rounded-[3rem] shadow-xl border border-amber-100 dark:border-amber-900 text-center">
-                      <Star size={64} className="mx-auto text-amber-300 dark:text-amber-600 mb-6" />
-                      <h3 className="text-2xl font-bold text-amber-900 dark:text-amber-100 mb-2">لا توجد آيات محفوظة</h3>
-                      <p className="text-amber-700 dark:text-amber-500">قم بحفظ الآيات من خلال الضغط على أيقونة الحفظ في أي آية.</p>
+                    <div className="bg-white/95 dark:bg-[#171412]/95 p-10 rounded-2xl shadow-sm border border-amber-200/50 dark:border-amber-900/40 text-center">
+                      <Star size={36} className="mx-auto text-amber-400 dark:text-amber-500 mb-3" />
+                      <h3 className="text-lg font-bold text-amber-950 dark:text-amber-100 mb-1">لا توجد آيات محفوظة بعد</h3>
+                      <p className="text-sm text-amber-800/70 dark:text-amber-300/65">اضغط على أيقونة النجمة بجانب أي آية لحفظها هنا.</p>
                     </div>
                   ) : (
-                    <div className="grid gap-6">
+                    <div className="grid gap-3.5">
                       {bookmarks.map((bookmark, index) => (
-                        <motion.div 
+                        <div 
                           key={`${bookmark.surah}-${bookmark.ayah}-${index}`}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.05 }}
-                          className="bg-white dark:bg-[#1c1917] p-8 rounded-[2.5rem] shadow-lg border border-amber-100 dark:border-amber-900 group relative overflow-hidden"
+                          className="bg-white/95 dark:bg-[#171412]/95 p-5 rounded-2xl shadow-sm border border-amber-200/50 dark:border-amber-900/40"
                         >
-                          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-100/50 dark:bg-amber-900/20 rounded-bl-[100px] -z-10 transition-transform group-hover:scale-110" />
-                          
-                          <div className="flex justify-between items-start mb-6">
-                            <div className="bg-amber-100 dark:bg-amber-900/50 px-4 py-2 rounded-xl text-amber-800 dark:text-amber-200 font-bold text-sm flex items-center gap-2">
-                              <BookOpen size={16} />
-                              {getSurahDisplayName(bookmark.surahName)} - آية {bookmark.ayah}
-                            </div>
+                          <div className="flex justify-between items-center pb-3 mb-3 border-b border-amber-100/70 dark:border-amber-900/30">
+                            <span className="text-xs sm:text-sm font-bold text-amber-800 dark:text-amber-200 flex items-center gap-1.5 font-kufi tabular-nums">
+                              <BookOpen size={15} className="text-amber-600 dark:text-amber-400" />
+                              {getSurahDisplayName(bookmark.surahName)} · آية {bookmark.ayah}
+                            </span>
                             <button 
                               onClick={() => setBookmarks(prev => prev.filter(b => !(b.surah === bookmark.surah && b.ayah === bookmark.ayah)))}
-                              className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
+                              className="w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                               title="إزالة من المحفوظات"
                             >
-                              <X size={20} />
+                              <X size={16} />
                             </button>
                           </div>
                           
-                          <div className="text-right leading-[2.8] mb-6">
+                          <div className="text-right font-quran text-xl sm:text-2xl leading-[2.2] text-amber-950 dark:text-amber-50 mb-4">
                             <TajweedText text={bookmark.text} isTajweed={isTajweed} />
                           </div>
                           
-                          <div className="flex gap-2 justify-end border-t border-amber-100 dark:border-amber-900/50 pt-4">
+                          <div className="flex gap-1.5 justify-end pt-3 border-t border-amber-100/70 dark:border-amber-900/30">
                             <ReadAloud 
                               text={bookmark.text} 
-                              buttonClassName="p-2 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors"
+                              buttonClassName="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 flex items-center justify-center transition-colors"
                             />
                             <button
                               onClick={() => {
@@ -4062,7 +3779,6 @@ function App() {
                                   setSelectedSurah(surahObj);
                                   setCurrentPage(Math.ceil(bookmark.ayah / VERSES_PER_PAGE));
                                   setViewMode('browse');
-                                  // Scroll to ayah after a short delay to allow rendering
                                   setTimeout(() => {
                                     const element = document.getElementById(`ayah-${bookmark.ayah}`);
                                     if (element) {
@@ -4073,17 +3789,17 @@ function App() {
                                   }, 100);
                                 }
                               }}
-                              className="p-2 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors"
+                              className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 flex items-center justify-center transition-colors"
                               title="الذهاب للآية"
                             >
-                              <Navigation size={18} />
+                              <Navigation size={15} />
                             </button>
                             <button 
                               onClick={() => navigator.clipboard.writeText(bookmark.text)}
-                              className="p-2 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors"
+                              className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 flex items-center justify-center transition-colors"
                               title="نسخ الآية"
                             >
-                              <Copy size={18} />
+                              <Copy size={15} />
                             </button>
                             {navigator.share && (
                               <button 
@@ -4093,10 +3809,10 @@ function App() {
                                     text: `${bookmark.text}\n[${getSurahDisplayName(bookmark.surahName)} - آية ${bookmark.ayah}]`,
                                   }).catch(console.error);
                                 }}
-                                className="p-2 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors"
+                                className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 flex items-center justify-center transition-colors"
                                 title="مشاركة الآية"
                               >
-                                <Share2 size={18} />
+                                <Share2 size={15} />
                               </button>
                             )}
                             <button 
@@ -4105,13 +3821,13 @@ function App() {
                                 logAIEvent(`طلب مساعدة ذكية للآية ${bookmark.ayah} من ${getSurahDisplayName(bookmark.surahName)}`, '✨');
                                 setShowAIHub(true);
                               }}
-                              className="p-2 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors"
+                              className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-200 hover:bg-sky-100 flex items-center justify-center transition-colors"
                               title="مساعدة ذكية"
                             >
-                              <Sparkles size={18} />
+                              <Sparkles size={15} />
                             </button>
                           </div>
-                        </motion.div>
+                        </div>
                       ))}
                     </div>
                   )}
@@ -4124,35 +3840,31 @@ function App() {
                 </Suspense>
               </motion.div>
             ) : viewMode === 'ai-chat' ? (
-              <motion.div 
-                key="ai-chat" 
-                initial={{ opacity: 0, y: 20 }} 
-                animate={{ opacity: 1, y: 0 }} 
-                exit={{ opacity: 0, y: -20 }} 
-                className="flex-1 min-h-[80vh] bg-white dark:bg-[#0c0a09] rounded-[3rem] shadow-2xl border border-amber-200/20 overflow-hidden flex flex-col relative"
-              >
-                <div className="absolute inset-0 bg-gradient-to-b from-amber-50/50 to-transparent dark:from-amber-950/10 pointer-events-none"></div>
-                <Suspense fallback={null}>
-                  <AIHub 
-                    isOpen={true} 
-                    onClose={() => setViewMode('search')} 
-                    provider={provider} 
-                    currentContext={aiContext}
-                    isFullScreen={true}
-                    onAction={handleAIAction}
-                    selectedVoice={selectedVoice}
-                    viewMode={viewMode}
-                    lastSearchedText={lastSearchedText}
-                    selectedReciter={selectedReciter}
-                    selectedQiraat={selectedQiraat}
-                    selectedTafsir={selectedTafsir}
-                    selectedTranslation={selectedTranslation}
-                  />
-                </Suspense>
-              </motion.div>
+              <div key="ai-chat" className="hidden" />
             ) : null}
           </AnimatePresence>
         </main>
+
+        {/* Full-Screen Smart Assistant */}
+        {viewMode === 'ai-chat' && (
+          <Suspense fallback={null}>
+            <AIHub 
+              isOpen={true} 
+              onClose={() => setViewMode('search')} 
+              provider={provider} 
+              currentContext={aiContext}
+              isFullScreen={true}
+              onAction={handleAIAction}
+              selectedVoice={selectedVoice}
+              viewMode={viewMode}
+              lastSearchedText={lastSearchedText}
+              selectedReciter={selectedReciter}
+              selectedQiraat={selectedQiraat}
+              selectedTafsir={selectedTafsir}
+              selectedTranslation={selectedTranslation}
+            />
+          </Suspense>
+        )}
 
         {/* Midad Al-Rahman - Moved to end for better stacking context */}
         <AnimatePresence>
@@ -4188,17 +3900,39 @@ function App() {
         {/* Status Toasts */}
         <AnimatePresence>
           {status && (
-            <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }} className="fixed bottom-32 left-1/2 -translate-x-1/2 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 px-8 py-4 rounded-2xl shadow-2xl border border-sky-200 dark:border-sky-900/50 text-center z-[110] flex items-center gap-3">
-              <Sparkles className="animate-pulse text-sky-500" size={20} />
-              <span className="text-lg font-bold">{status}</span>
-              <button onClick={() => setStatus('')} className="p-1 hover:bg-sky-100 dark:hover:bg-sky-900 rounded-lg transition-colors">✕</button>
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 24 }}
+              className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-white/95 dark:bg-[#171412]/95 text-sky-800 dark:text-sky-200 px-5 py-3 rounded-2xl shadow-xl border border-sky-200/70 dark:border-sky-900/50 backdrop-blur-md text-center z-[110] flex items-center gap-3 max-w-[92vw]"
+            >
+              <Sparkles className="text-sky-600 dark:text-sky-400 shrink-0" size={18} />
+              <span className="text-sm font-bold">{status}</span>
+              <button
+                onClick={() => setStatus('')}
+                className="w-7 h-7 flex items-center justify-center hover:bg-sky-100 dark:hover:bg-sky-900/40 rounded-lg transition-colors shrink-0"
+                aria-label="إغلاق التنبيه"
+              >
+                <X size={15} />
+              </button>
             </motion.div>
           )}
           {error && (
-            <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }} className="fixed bottom-32 left-1/2 -translate-x-1/2 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 px-8 py-4 rounded-2xl shadow-2xl border border-red-200 dark:border-red-900/50 text-center z-[110] flex flex-col items-center gap-3">
-              <div className="flex items-center gap-4">
-                <span className="text-xl font-bold">{error}</span>
-                <button onClick={() => setError('')} className="p-1 hover:bg-red-100 dark:hover:bg-red-900 rounded-lg transition-colors">✕</button>
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 24 }}
+              className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-white/95 dark:bg-[#171412]/95 text-red-700 dark:text-red-300 px-5 py-3.5 rounded-2xl shadow-xl border border-red-200/80 dark:border-red-900/50 backdrop-blur-md text-center z-[110] flex flex-col items-center gap-2.5 max-w-[92vw]"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-bold">{error}</span>
+                <button
+                  onClick={() => setError('')}
+                  className="w-7 h-7 flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors shrink-0"
+                  aria-label="إغلاق الخطأ"
+                >
+                  <X size={15} />
+                </button>
               </div>
               {(typeof error === 'string' && (error.includes('تجاوز الحد') || error.includes('مفتاح API'))) && (
                 <button 
@@ -4206,9 +3940,9 @@ function App() {
                     setShowSettings(true);
                     setError('');
                   }}
-                  className="flex items-center gap-2 px-4 py-2 bg-amber-700 text-white rounded-xl text-sm font-bold hover:bg-amber-800 transition-colors"
+                  className="h-9 flex items-center gap-2 px-4 bg-amber-700 text-white rounded-xl text-xs font-bold hover:bg-amber-800 transition-colors"
                 >
-                  <Settings2 size={16} />
+                  <Settings2 size={15} />
                   فتح الإعدادات لإضافة مفتاحك الخاص
                 </button>
               )}
@@ -4217,29 +3951,26 @@ function App() {
         </AnimatePresence>
 
         {/* AI Hub Floating Button */}
-        <motion.div
-          drag
-          dragMomentum={false}
-          className="fixed bottom-32 right-6 z-50 cursor-grab"
-        >
-          <motion.button
-            whileHover={{ scale: 1.1, rotate: 5 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => {
-              setAIContext(undefined);
-              setShowAIHub(true);
-            }}
-            className="w-14 h-14 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-2xl shadow-2xl flex items-center justify-center border-2 border-white/20 touch-none overflow-hidden"
-            title="المساعد الذكي (اسحب للتحريك)"
+        {!showMidadAlRahman && viewMode !== 'ai-chat' && !showAIHub && (
+          <motion.div
+            drag
+            dragMomentum={false}
+            className="fixed bottom-24 right-4 sm:right-6 z-50 cursor-grab"
           >
-            <Sparkles size={28} />
-            <motion.div 
-              animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="absolute inset-0 bg-amber-400 rounded-2xl -z-10"
-            />
-          </motion.button>
-        </motion.div>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                setAIContext(undefined);
+                setShowAIHub(true);
+              }}
+              className="w-12 h-12 bg-gradient-to-br from-amber-600 to-orange-700 text-white rounded-2xl shadow-lg shadow-amber-900/20 flex items-center justify-center border border-amber-300/40 touch-none transition-shadow hover:shadow-xl"
+              title="المساعد الذكي (اسحب للتحريك)"
+            >
+              <Sparkles size={22} />
+            </motion.button>
+          </motion.div>
+        )}
 
         {/* AI Hub Component */}
         <Suspense fallback={null}>
@@ -4275,11 +4006,11 @@ function App() {
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 backdrop-blur-[2px]"
+              className="fixed inset-0 z-[110] flex items-center justify-center bg-black/45 backdrop-blur-sm p-4"
             >
-              <div className="bg-white dark:bg-[#1c1917] p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-4 border border-amber-100/20">
-                <div className="w-12 h-12 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-xl font-bold text-sky-900 dark:text-sky-100">جاري تحليل القراءات العشر...</p>
+              <div className="bg-white dark:bg-[#171412] px-7 py-6 rounded-2xl shadow-2xl flex flex-col items-center gap-3.5 border border-amber-200/60 dark:border-amber-900/50">
+                <div className="w-10 h-10 border-4 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                <p className="text-base font-bold text-amber-950 dark:text-amber-100">جاري تحليل القراءات العشر...</p>
               </div>
             </motion.div>
           )}
@@ -4292,47 +4023,47 @@ function App() {
               onClick={() => setShowQiraatInfo(null)}
             >
               <motion.div 
-                initial={{ scale: 0.9, y: 20, opacity: 0 }} 
+                initial={{ scale: 0.96, y: 12, opacity: 0 }} 
                 animate={{ scale: 1, y: 0, opacity: 1 }} 
-                exit={{ scale: 0.9, y: 20, opacity: 0 }}
-                className="bg-white dark:bg-[#1c1917] rounded-[2.5rem] w-full max-w-2xl max-h-[85vh] overflow-hidden shadow-2xl border border-amber-100/20"
+                exit={{ scale: 0.96, y: 12, opacity: 0 }}
+                className="bg-white dark:bg-[#171412] rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden shadow-2xl border border-amber-200/60 dark:border-amber-900/50 flex flex-col"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="p-6 border-b border-amber-100 dark:border-amber-900/30 flex justify-between items-center bg-sky-50/50 dark:bg-sky-900/10">
+                <div className="px-5 py-4 border-b border-amber-200/50 dark:border-amber-900/40 flex justify-between items-center bg-amber-50/50 dark:bg-amber-950/20">
                   <div className="flex items-center gap-3">
-                    <div className="p-3 bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 rounded-2xl shadow-inner">
-                      <BookOpen size={24} />
+                    <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded-xl flex items-center justify-center shrink-0">
+                      <BookOpen size={20} />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold text-sky-900 dark:text-sky-100">اختلاف القراءات العشر</h2>
-                      <p className="text-sm text-sky-800/60 dark:text-sky-200/60">{selectedSurah?.name} - آية {showQiraatInfo.ayah}</p>
+                      <h2 className="text-lg font-bold text-amber-950 dark:text-amber-100">اختلاف القراءات العشر</h2>
+                      <p className="text-xs text-amber-800/70 dark:text-amber-200/70 tabular-nums">{selectedSurah?.name} - آية {showQiraatInfo.ayah}</p>
                     </div>
                   </div>
                   <button 
                     onClick={() => setShowQiraatInfo(null)}
-                    className="p-2.5 hover:bg-sky-100 dark:hover:bg-sky-900/30 rounded-2xl transition-all text-sky-800 dark:text-sky-200 active:scale-90"
+                    className="w-9 h-9 flex items-center justify-center hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-xl transition-colors text-amber-800 dark:text-amber-200"
                   >
-                    <X size={24} />
+                    <X size={18} />
                   </button>
                 </div>
-                <div className="p-8 overflow-y-auto max-h-[calc(85vh-100px)] custom-scrollbar text-right" dir="rtl">
-                  <div className="mb-8 p-6 bg-amber-50 dark:bg-amber-900/10 rounded-3xl border border-amber-100 dark:border-amber-800/30 text-center">
-                    <p className="text-3xl font-quran text-amber-950 dark:text-amber-100 leading-relaxed">
+                <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar text-right space-y-5" dir="rtl">
+                  <div className="p-4 sm:p-5 bg-amber-50/60 dark:bg-amber-950/20 rounded-2xl border border-amber-200/50 dark:border-amber-900/40 text-center">
+                    <p className="text-2xl sm:text-3xl font-quran text-amber-950 dark:text-amber-100 leading-relaxed">
                       {showQiraatInfo.text}
                     </p>
                   </div>
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-xl font-bold text-sky-900 dark:text-sky-200">البيان والتحليل:</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-base font-bold text-amber-900 dark:text-amber-200">البيان والتحليل</h3>
                       <button 
                         onClick={() => isSpeaking ? stopSpeaking() : speakText(showQiraatInfo.info)}
-                        className={`p-2 rounded-xl transition-colors ${isSpeaking ? 'bg-sky-200 dark:bg-sky-800 animate-pulse' : 'hover:bg-sky-100 dark:hover:bg-sky-800/50'}`}
+                        className={`w-9 h-9 flex items-center justify-center rounded-xl transition-colors ${isSpeaking ? 'bg-red-100 dark:bg-red-900/40 text-red-600' : 'bg-amber-100/70 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 hover:bg-amber-200/70'}`}
                         title={isSpeaking ? "إيقاف القراءة" : "قراءة التحليل"}
                       >
-                        {isSpeaking ? <Square size={20} className="text-red-600" /> : <Volume2 size={20} className="text-sky-900 dark:text-sky-300" />}
+                        {isSpeaking ? <Square size={16} /> : <Volume2 size={18} />}
                       </button>
                     </div>
-                    <p className="text-2xl text-sky-900 dark:text-sky-100 leading-relaxed italic whitespace-pre-wrap">
+                    <p className="text-base sm:text-lg text-amber-950/90 dark:text-amber-100/90 leading-relaxed whitespace-pre-wrap">
                       {showQiraatInfo.info}
                     </p>
                   </div>
@@ -4342,9 +4073,6 @@ function App() {
           )}
         </AnimatePresence>
 
-        {/* Tafsir Modal removed as it now opens in AI Hub */}
-
-
         {/* Tajweed Info Modal */}
         <AnimatePresence>
           {showTajweedInfo && (
@@ -4352,30 +4080,33 @@ function App() {
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
               exit={{ opacity: 0 }} 
-              className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" 
+              className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/55 backdrop-blur-sm" 
               onClick={() => setShowTajweedInfo(false)}
             >
               <motion.div 
-                initial={{ scale: 0.9, y: 20 }} 
+                initial={{ scale: 0.96, y: 12 }} 
                 animate={{ scale: 1, y: 0 }} 
-                exit={{ scale: 0.9, y: 20 }} 
-                className="bg-white dark:bg-[#1c1917] rounded-3xl p-8 max-w-md w-full shadow-2xl border border-amber-200 dark:border-amber-900/50" 
+                exit={{ scale: 0.96, y: 12 }} 
+                className="bg-white dark:bg-[#171412] rounded-2xl p-5 sm:p-6 max-w-md w-full shadow-2xl border border-amber-200/60 dark:border-amber-900/50" 
                 onClick={e => e.stopPropagation()} 
                 dir="rtl"
               >
-                <div className="flex justify-between items-center mb-6 border-b border-amber-100 dark:border-amber-900/50 pb-4">
-                  <h3 className="text-2xl font-bold text-amber-950 dark:text-amber-400 font-quran">دليل ألوان التجويد</h3>
-                  <button onClick={() => setShowTajweedInfo(false)} className="text-gray-500 hover:text-amber-700 dark:hover:text-amber-400 transition-colors bg-amber-50 dark:bg-amber-900/20 p-2 rounded-xl">
-                    <X size={24} />
+                <div className="flex justify-between items-center mb-4 border-b border-amber-200/50 dark:border-amber-900/40 pb-3.5">
+                  <h3 className="text-lg font-bold text-amber-950 dark:text-amber-100 font-quran">دليل ألوان التجويد</h3>
+                  <button
+                    onClick={() => setShowTajweedInfo(false)}
+                    className="w-9 h-9 flex items-center justify-center text-amber-800 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors bg-amber-50 dark:bg-amber-900/20 rounded-xl"
+                  >
+                    <X size={18} />
                   </button>
                 </div>
-                <div className="space-y-4 text-lg font-quran">
+                <div className="space-y-2.5 max-h-[65vh] overflow-y-auto custom-scrollbar">
                   {TAJWEED_RULES.map(rule => (
-                    <div key={rule.id} className="flex items-center gap-4 p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30">
-                      <div className={`w-6 h-6 rounded-full flex-shrink-0 shadow-md ${rule.class.replace(/text-/g, 'bg-')}`}></div>
-                      <div>
-                        <p className={`font-bold text-xl ${rule.class}`}>{rule.name}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{rule.description}</p>
+                    <div key={rule.id} className="flex items-start gap-3.5 p-3.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/40 dark:border-amber-900/30">
+                      <div className={`w-4 h-4 mt-1 rounded-md flex-shrink-0 ${rule.class.replace(/text-/g, 'bg-')}`} />
+                      <div className="min-w-0">
+                        <p className={`font-bold text-base font-quran ${rule.class}`}>{rule.name}</p>
+                        <p className="text-xs text-amber-900/75 dark:text-amber-100/70 mt-0.5 leading-relaxed">{rule.description}</p>
                       </div>
                     </div>
                   ))}
@@ -4389,36 +4120,39 @@ function App() {
         <AnimatePresence>
           {ayahContextMenu && ayahContextMenu.visible && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
               style={{ 
                 position: 'fixed', 
-                top: Math.min(Math.max(ayahContextMenu.y, 20), window.innerHeight - 350),
-                left: Math.min(Math.max(ayahContextMenu.x, 20), window.innerWidth - 300),
+                top: Math.min(Math.max(ayahContextMenu.y, 16), window.innerHeight - 360),
+                left: Math.min(Math.max(ayahContextMenu.x, 16), window.innerWidth - 296),
                 zIndex: 300 
               }}
-              className="bg-white dark:bg-[#1c1917] border-2 border-amber-200 dark:border-amber-900 rounded-3xl shadow-2xl overflow-hidden min-w-[280px] islamic-pattern"
+              className="bg-white/95 dark:bg-[#171412]/95 backdrop-blur-md border border-amber-200/80 dark:border-amber-900/60 rounded-2xl shadow-2xl overflow-hidden w-[272px]"
               onClick={(e) => e.stopPropagation()}
               dir="rtl"
             >
               {/* Header */}
-              <div className="bg-amber-50/50 dark:bg-amber-900/20 p-4 border-b border-amber-100 dark:border-amber-900/50 flex items-center justify-between">
-                <span className="text-amber-900 dark:text-amber-100 font-bold text-sm">خيارات الآية</span>
-                <button onClick={() => setAyahContextMenu(null)} className="p-1 hover:bg-amber-200/50 dark:hover:bg-amber-800/50 rounded-full transition-colors">
-                  <X size={16} className="text-amber-700 dark:text-amber-300" />
+              <div className="bg-amber-50/70 dark:bg-amber-950/30 px-4 py-3 border-b border-amber-200/50 dark:border-amber-900/40 flex items-center justify-between">
+                <span className="text-amber-950 dark:text-amber-100 font-bold text-sm">خيارات الآية</span>
+                <button
+                  onClick={() => setAyahContextMenu(null)}
+                  className="w-7 h-7 flex items-center justify-center hover:bg-amber-200/50 dark:hover:bg-amber-800/50 rounded-lg transition-colors"
+                >
+                  <X size={15} className="text-amber-800 dark:text-amber-200" />
                 </button>
               </div>
 
-              <div className="p-3 space-y-1">
+              <div className="p-2.5 space-y-1">
                 <button
                   onClick={() => {
                     analyzeQiraat(ayahContextMenu.surahId, ayahContextMenu.ayahId, ayahContextMenu.text);
                     setAyahContextMenu(null);
                   }}
-                  className="w-full text-right px-4 py-3 rounded-2xl hover:bg-amber-100/50 dark:hover:bg-amber-900/30 transition-all flex items-center gap-3 text-amber-950 dark:text-amber-100 font-bold"
+                  className="w-full text-right px-3 py-2.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors flex items-center gap-2.5 text-amber-950 dark:text-amber-100 text-sm font-bold"
                 >
-                  <BookOpen size={18} className="text-amber-600 dark:text-amber-400" />
+                  <BookOpen size={16} className="text-amber-600 dark:text-amber-400 shrink-0" />
                   <span>تحليل القراءات</span>
                 </button>
                 
@@ -4427,33 +4161,36 @@ function App() {
                     setVisionText(ayahContextMenu.text);
                     setAyahContextMenu(null);
                   }}
-                  className="w-full text-right px-4 py-3 rounded-2xl hover:bg-emerald-100/50 dark:hover:bg-emerald-900/30 transition-all flex items-center gap-3 text-emerald-950 dark:text-emerald-100 font-bold"
+                  className="w-full text-right px-3 py-2.5 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors flex items-center gap-2.5 text-emerald-950 dark:text-emerald-100 text-sm font-bold"
                 >
-                  <ImageIcon size={18} className="text-emerald-600 dark:text-emerald-400" />
+                  <ImageIcon size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <span>رؤية بصرية</span>
                 </button>
                 
-                <div className="h-px bg-amber-100 dark:bg-amber-900/30 my-1" />
+                <div className="h-px bg-amber-200/50 dark:bg-amber-900/40 my-1.5" />
                 
-                <div className="px-4 py-2 text-[10px] text-amber-500 font-bold uppercase tracking-widest">التفسير</div>
+                <div className="px-3 py-1 text-xs text-amber-700 dark:text-amber-400 font-bold">التفسير</div>
                 
-                <div className="max-h-[200px] overflow-y-auto custom-scrollbar">
+                <div className="max-h-[190px] overflow-y-auto custom-scrollbar space-y-0.5">
                   {TAFASIR.map((tafsir) => (
                     <button
                       key={tafsir.id}
                       onClick={() => handleTafsirSelect(tafsir.id, ayahContextMenu.surahId, ayahContextMenu.ayahId)}
-                      className="w-full text-right px-4 py-2.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/40 transition-colors flex items-center gap-3 text-amber-900/90 dark:text-amber-100/90 text-sm"
+                      className="w-full text-right px-3 py-2 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/35 transition-colors flex items-center gap-2.5 text-amber-950/90 dark:text-amber-100/90 text-xs font-medium"
                     >
-                      {tafsir.id === 'ai.explanation' ? <Sparkles size={14} className="text-amber-600" /> : <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
-                      {tafsir.name}
+                      {tafsir.id === 'ai.explanation' ? (
+                        <Sparkles size={14} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                      ) : (
+                        <BookOpen size={14} className="text-amber-500/80 dark:text-amber-400/70 shrink-0" />
+                      )}
+                      <span className="truncate">{tafsir.name}</span>
                     </button>
                   ))}
                 </div>
               </div>
               
-              {/* Decorative Footer */}
-              <div className="p-2 bg-amber-50/50 dark:bg-amber-900/20 flex justify-center">
-                <div className="text-[10px] text-amber-900/40 dark:text-amber-100/40 font-quran">مداد الرحمن - المساعد الذكي</div>
+              <div className="px-3 py-2 bg-amber-50/50 dark:bg-amber-950/20 border-t border-amber-200/40 dark:border-amber-900/30 text-center">
+                <span className="text-[11px] text-amber-900/50 dark:text-amber-100/50 font-quran">مداد الرحمن - المساعد الذكي</span>
               </div>
             </motion.div>
           )}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sliders, Play, Pause, RotateCcw, X, Sparkles, Compass, Waves, Orbit, Flame, Globe } from 'lucide-react';
+import { Sliders, Play, Pause, X, Sparkles, Compass, Waves, Orbit, Flame, Globe } from 'lucide-react';
 
 type SimMode = 'entropy' | 'expansion' | 'seas' | 'orbits';
 
@@ -8,23 +8,19 @@ interface PhysicsCosmosSandboxProps {
   onSendToChat?: (text: string) => void;
 }
 
+const PARTICLE_COUNT = 60;
+const GALAXY_COUNT = 12;
+
 export const PhysicsCosmosSandbox: React.FC<PhysicsCosmosSandboxProps> = ({ onClose, onSendToChat }) => {
   const [mode, setMode] = useState<SimMode>('entropy');
   const [isPlaying, setIsPlaying] = useState(true);
 
   // Simulation parameters
   const [entropyOrder, setEntropyOrder] = useState<number>(75); // 0 = Pure chaos, 100 = Perfect Order
-  const [particleCount, setParticleCount] = useState<number>(60);
   const [temperature, setTemperature] = useState<number>(50);
-
   const [hubbleConstant, setHubbleConstant] = useState<number>(65); // Spacetime expansion rate
-  const [galaxyCount, setGalaxyCount] = useState<number>(12);
-
-  const [salinityDiff, setSalinityDiff] = useState<number>(80); // Water density / salinity gap
   const [haloclineTension, setHaloclineTension] = useState<number>(90);
-
   const [orbitalSpeed, setOrbitalSpeed] = useState<number>(50);
-  const [gravityPull, setGravityPull] = useState<number>(60);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -77,7 +73,7 @@ export const PhysicsCosmosSandbox: React.FC<PhysicsCosmosSandboxProps> = ({ onCl
           ctx.stroke();
         }
 
-        particles.slice(0, particleCount).forEach((p, idx) => {
+        particles.slice(0, PARTICLE_COUNT).forEach((p, idx) => {
           if (chaos < 0.1) {
             p.x += (p.targetX - p.x) * 0.05;
             p.y += (p.targetY - p.y) * 0.05;
@@ -114,7 +110,7 @@ export const PhysicsCosmosSandbox: React.FC<PhysicsCosmosSandboxProps> = ({ onCl
           ctx.stroke();
         }
 
-        galaxies.slice(0, galaxyCount).forEach((g, i) => {
+        galaxies.slice(0, GALAXY_COUNT).forEach((g, i) => {
           const currentDist = (g.distance * scale) % (canvas.width / 2);
           const x = cx + Math.cos(g.angle) * currentDist;
           const y = cy + Math.sin(g.angle) * currentDist;
@@ -213,24 +209,24 @@ export const PhysicsCosmosSandbox: React.FC<PhysicsCosmosSandboxProps> = ({ onCl
     return () => {
       cancelAnimationFrame(animationFrameId);
     };
-  }, [mode, isPlaying, entropyOrder, particleCount, temperature, hubbleConstant, galaxyCount, salinityDiff, haloclineTension, orbitalSpeed, gravityPull]);
+  }, [mode, isPlaying, entropyOrder, temperature, hubbleConstant, haloclineTension, orbitalSpeed]);
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in" dir="rtl">
-      <div className="relative w-full max-w-4xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-amber-500/20 overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-4xl bg-white dark:bg-[#171412] rounded-2xl shadow-2xl border border-amber-500/20 overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Header */}
         <div className="p-5 bg-gradient-to-r from-emerald-800 via-amber-800 to-zinc-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-500/20 rounded-2xl border border-emerald-400/30">
-              <Compass className="w-6 h-6 text-emerald-300 animate-spin-slow" />
+            <div className="p-2.5 bg-emerald-500/20 rounded-xl border border-emerald-400/30">
+              <Compass className="w-6 h-6 text-emerald-300" />
             </div>
             <div>
-              <h2 className="text-xl font-bold font-serif text-amber-100">مختبر المحاكاة التفاعلي (Physics & Cosmos Sandbox)</h2>
+              <h2 className="text-lg sm:text-xl font-bold font-serif text-amber-100">مختبر المحاكاة التفاعلي (Physics &amp; Cosmos Sandbox)</h2>
               <p className="text-xs text-amber-200/80">محاكاة تفاعلية مباشرة للسنن والظواهر الكونية المرتبطة بالقرآن العظيم</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors">
+          <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors flex items-center justify-center">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -284,7 +280,7 @@ export const PhysicsCosmosSandbox: React.FC<PhysicsCosmosSandboxProps> = ({ onCl
           <div className="w-full md:w-80 flex flex-col justify-between space-y-4">
             <div className="space-y-4">
               <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20">
-                <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider block">الآية الموجهة للمحاكاة</span>
+                <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 block">الآية الموجهة للمحاكاة</span>
                 <p className="text-base font-bold font-serif text-amber-900 dark:text-amber-200 mt-1">
                   {mode === 'entropy' && '﴿وَكُلُّ شَيْءٍ عِندَهُ بِمِقْدَارٍ﴾'}
                   {mode === 'expansion' && '﴿وَالسَّمَاءَ بَنَيْنَاهَا بِأَيْدٍ وَإِنَّا لَمُوسِعُونَ﴾'}
@@ -305,7 +301,7 @@ export const PhysicsCosmosSandbox: React.FC<PhysicsCosmosSandboxProps> = ({ onCl
                     <div className="space-y-1">
                       <div className="flex justify-between text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">
                         <span>مستوى النظام والضبط الكمي</span>
-                        <span className="font-mono">{entropyOrder}%</span>
+                        <span className="font-mono tabular-nums">{entropyOrder}%</span>
                       </div>
                       <input
                         type="range"
@@ -320,7 +316,7 @@ export const PhysicsCosmosSandbox: React.FC<PhysicsCosmosSandboxProps> = ({ onCl
                     <div className="space-y-1">
                       <div className="flex justify-between text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">
                         <span>درجة الحرارة والطاقة الحركية</span>
-                        <span className="font-mono">{temperature} K</span>
+                        <span className="font-mono tabular-nums">{temperature} K</span>
                       </div>
                       <input
                         type="range"

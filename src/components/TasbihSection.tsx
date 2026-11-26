@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { RefreshCw, Settings2, Moon, Sun, Sparkles, Share2, Copy } from 'lucide-react';
+import { RefreshCw, Settings2, Moon, Sun, Share2, Copy } from 'lucide-react';
 import { ReadAloud } from './ReadAloud';
 
 const NAMES_OF_ALLAH = [
@@ -178,61 +178,59 @@ export const TasbihSection: React.FC = () => {
   const isDay = count < 50;
 
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-6 min-h-[700px] relative overflow-hidden">
-      {/* Background Decorative Elements */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-[400px] h-[400px] rounded-full bg-amber-400/10 dark:bg-amber-600/5 blur-[50px] opacity-60" />
-        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] rounded-full bg-orange-400/10 dark:bg-orange-600/5 blur-[50px] opacity-60" />
-      </div>
-
+    <div className="flex flex-col items-center justify-center py-6 sm:py-10 px-3 relative">
       {/* Header Controls */}
-      <div className="w-full max-w-2xl flex justify-between items-center mb-16 z-10">
-        <div className="flex gap-3">
-          <button 
+      <div className="w-full max-w-2xl flex justify-between items-center mb-8 bg-white/95 dark:bg-[#171412]/95 p-4 sm:p-5 rounded-2xl border border-amber-200/50 dark:border-amber-900/40 shadow-sm">
+        <div className="flex gap-1.5">
+          <button
             onClick={() => setShowSettings(!showSettings)}
-            className="p-4 rounded-[1.5rem] bg-white/80 dark:bg-white/5 backdrop-blur-xl border border-amber-200/50 dark:border-white/10 text-amber-900 dark:text-amber-100 hover:scale-110 hover:rotate-12 transition-all shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none"
-            title="الإعدادات"
+            className={`w-9 h-9 flex items-center justify-center rounded-xl border transition-colors ${showSettings ? 'bg-amber-700 border-amber-700 text-white' : 'bg-amber-50 dark:bg-amber-900/30 border-amber-200/50 dark:border-amber-800/40 text-amber-800 dark:text-amber-200 hover:bg-amber-100'}`}
+            title="اختر نوع الذكر"
           >
-            <Settings2 size={26} />
+            <Settings2 size={17} />
           </button>
-          {navigator.share && (
-            <button 
+          {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
+            <button
               onClick={() => {
                 navigator.share({
                   title: 'السبحة الإلكترونية',
                   text: currentItem,
                 }).catch(console.error);
               }}
-              className="p-4 rounded-[1.5rem] bg-white/80 dark:bg-white/5 backdrop-blur-xl border border-amber-200/50 dark:border-white/10 text-amber-900 dark:text-amber-100 hover:scale-110 hover:-rotate-12 transition-all shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none"
+              className="w-9 h-9 flex items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-900/30 border border-amber-200/50 dark:border-amber-800/40 text-amber-800 dark:text-amber-200 hover:bg-amber-100 transition-colors"
               title="مشاركة"
             >
-              <Share2 size={26} />
+              <Share2 size={17} />
             </button>
           )}
         </div>
-        <div className="flex flex-col items-center">
-          <h2 className="text-4xl font-black text-amber-950 dark:text-amber-50 mb-2 tracking-tight">السبحة الإلكترونية</h2>
-          <div className="h-1.5 w-16 bg-gradient-to-r from-transparent via-amber-500 to-transparent rounded-full shadow-sm shadow-amber-500/50" />
+
+        <div className="text-center">
+          <h2 className="text-xl sm:text-2xl font-bold text-amber-950 dark:text-amber-50 font-kufi">السبحة الإلكترونية</h2>
+          <p className="text-[11px] text-amber-700/75 dark:text-amber-300/70">
+            {mode === 'names' ? 'أسماء الله الحسنى' : mode === 'tasbih' ? 'التسبيح' : mode === 'istighfar' ? 'الاستغفار' : 'التعظيم'}
+          </p>
         </div>
-        <button 
+
+        <button
           onClick={reset}
-          className="p-4 rounded-[1.5rem] bg-white/80 dark:bg-white/5 backdrop-blur-xl border border-amber-200/50 dark:border-white/10 text-amber-900 dark:text-amber-100 hover:scale-110 transition-all shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none"
+          className="w-9 h-9 flex items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-900/30 border border-amber-200/50 dark:border-amber-800/40 text-amber-800 dark:text-amber-200 hover:bg-amber-100 transition-colors"
           title="إعادة ضبط"
         >
-          <RefreshCw size={26} className={isAnimating ? 'animate-spin' : ''} />
+          <RefreshCw size={17} className={isAnimating ? 'animate-spin' : ''} />
         </button>
       </div>
 
-      {/* Mode Settings Panel */}
+      {/* Mode Selector Strip (always easy 1-tap switch or toggled) */}
       <AnimatePresence>
         {showSettings && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0, y: -20 }}
-            animate={{ height: 'auto', opacity: 1, y: 0 }}
-            exit={{ height: 0, opacity: 0, y: -20 }}
-            className="w-full max-w-xl mb-12 overflow-hidden z-20"
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="w-full max-w-xl mb-8 overflow-hidden"
           >
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-6 bg-white/60 dark:bg-white/5 backdrop-blur-2xl rounded-[2.5rem] border border-amber-200/50 dark:border-white/10 shadow-xl">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 bg-white/95 dark:bg-[#171412]/95 rounded-2xl border border-amber-200/50 dark:border-amber-900/40 shadow-sm">
               {[
                 { id: 'names', label: 'الأسماء الحسنى' },
                 { id: 'tasbih', label: 'تسبيح' },
@@ -242,7 +240,7 @@ export const TasbihSection: React.FC = () => {
                 <button
                   key={m.id}
                   onClick={() => { setMode(m.id as TasbihMode); setShowSettings(false); }}
-                  className={`p-4 rounded-2xl font-black text-sm transition-all duration-300 ${mode === m.id ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30 scale-105' : 'bg-white/80 dark:bg-white/5 text-amber-900 dark:text-amber-100 hover:bg-amber-100 dark:hover:bg-white/10 border border-amber-100 dark:border-white/5'}`}
+                  className={`py-2.5 px-3 rounded-xl font-semibold text-xs sm:text-sm transition-colors ${mode === m.id ? 'bg-amber-700 text-white' : 'bg-amber-50/70 dark:bg-amber-900/20 text-amber-900 dark:text-amber-100 hover:bg-amber-100'}`}
                 >
                   {m.label}
                 </button>
@@ -252,142 +250,88 @@ export const TasbihSection: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Main Tasbih Display */}
-      <div className="relative w-96 h-96 flex items-center justify-center mb-16">
-        {/* Background Glow */}
-        <div className="absolute inset-0 bg-amber-500/5 dark:bg-amber-500/10 rounded-full blur-[80px] pointer-events-none"></div>
-        
-        {/* Agate Chain (Circular Beads) */}
-        <div className="absolute inset-0 rounded-full border-[6px] border-dashed border-amber-900/5 dark:border-amber-100/5" />
-        
-        {/* Animated Beads */}
+      {/* Responsive Tasbih Display (fits 375px+ mobile screens cleanly) */}
+      <div className="relative w-[300px] h-[300px] sm:w-[340px] sm:h-[340px] flex items-center justify-center mb-12">
+        <div className="absolute inset-2 rounded-full border-2 border-dashed border-amber-900/10 dark:border-amber-100/10" />
+
         {Array.from({ length: 33 }).map((_, i) => {
           const angle = (i / 33) * 360 + rotation;
-          const isActive = i === Math.floor((count % 33));
+          const isActive = i === Math.floor(count % 33);
+          const radius = 136;
           return (
-            <motion.div
+            <div
               key={i}
-              className={`absolute w-5 h-5 rounded-full shadow-lg ${isActive ? 'bg-gradient-to-br from-amber-400 to-amber-700 scale-150 z-20 shadow-amber-500/50 border-2 border-white/50' : 'bg-amber-900/20 dark:bg-amber-100/10'}`}
+              className={`absolute w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full transition-transform duration-200 ${isActive ? 'bg-amber-600 scale-150 z-20 ring-2 ring-white dark:ring-stone-900 shadow-md' : 'bg-amber-800/25 dark:bg-amber-200/20'}`}
               style={{
-                left: `calc(50% + ${Math.cos((angle * Math.PI) / 180) * 160}px - 10px)`,
-                top: `calc(50% + ${Math.sin((angle * Math.PI) / 180) * 160}px - 10px)`,
-                backgroundColor: isActive ? undefined : `rgba(${139 + i * 2}, ${69 + i}, 19, 0.4)` // Agate-like variations
+                left: `calc(50% + ${Math.cos((angle * Math.PI) / 180) * radius}px - 7px)`,
+                top: `calc(50% + ${Math.sin((angle * Math.PI) / 180) * radius}px - 7px)`,
               }}
-              animate={{
-                scale: isActive ? 1.5 : 1,
-                opacity: isActive ? 1 : 0.6
-              }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
             />
           );
         })}
 
-        {/* Sun/Moon Central Cycle */}
-        <motion.div 
-          className="relative w-64 h-64 rounded-full bg-white/90 dark:bg-[#1c1917]/90 backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.08)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.4)] flex flex-col items-center justify-center p-10 text-center cursor-pointer border-[6px] border-white dark:border-white/5 group overflow-hidden transition-all duration-500"
+        <motion.div
+          className="relative w-52 h-52 sm:w-60 sm:h-60 rounded-full bg-white/95 dark:bg-[#171412]/95 shadow-lg flex flex-col items-center justify-center p-6 text-center cursor-pointer border-4 border-amber-100/80 dark:border-amber-900/40 group overflow-hidden select-none"
           onClick={handlePress}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.92 }}
+          whileTap={{ scale: 0.95 }}
         >
-          {/* Sun/Moon Icon Background */}
-          <motion.div 
-            className="absolute top-6 right-6 text-amber-500/10 dark:text-amber-300/5"
-            animate={{ rotate: rotation }}
-            transition={{ type: "spring", stiffness: 50 }}
-          >
-            {isDay ? <Sun size={140} /> : <Moon size={140} />}
-          </motion.div>
+          <div className="absolute top-4 right-4 text-amber-500/15 dark:text-amber-300/10 pointer-events-none">
+            {isDay ? <Sun size={72} /> : <Moon size={72} />}
+          </div>
 
-          {/* Current Item Text */}
           <AnimatePresence mode="wait">
             <motion.div
               key={currentItem}
-              initial={{ y: 30, opacity: 0, scale: 0.9 }}
-              animate={{ y: 0, opacity: 1, scale: 1 }}
-              exit={{ y: -30, opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-              className="z-10 flex flex-col items-center"
+              initial={{ y: 12, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -12, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="z-10 flex flex-col items-center gap-3"
             >
-              <h3 className="text-4xl font-black text-amber-950 dark:text-amber-50 mb-4 font-amiri leading-relaxed drop-shadow-sm">
+              <h3 className="text-2xl sm:text-3xl font-bold text-amber-950 dark:text-amber-50 font-amiri leading-snug">
                 {currentItem}
               </h3>
-              <div className="flex items-center justify-center gap-2.5 px-4 py-1.5 bg-amber-100/50 dark:bg-amber-900/30 rounded-full text-amber-800 dark:text-amber-300 mb-6 border border-amber-200/50 dark:border-amber-700/30">
-                <Sparkles size={14} className="animate-pulse" />
-                <span className="text-xs font-black uppercase tracking-[0.2em]">
-                  {mode === 'names' ? 'اسم الله' : mode === 'tasbih' ? 'تسبيح' : mode === 'istighfar' ? 'استغفار' : 'تعظيم'}
-                </span>
-              </div>
-              <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-4 group-hover:translate-y-0">
-                <ReadAloud 
-                  text={currentItem} 
-                  buttonClassName="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 hover:scale-110 transition-transform shadow-sm"
+
+              <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
+                <ReadAloud
+                  text={currentItem}
+                  buttonClassName="w-8 h-8 flex items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 transition-colors"
                 />
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigator.clipboard.writeText(currentItem);
-                  }}
-                  className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 hover:scale-110 transition-transform shadow-sm"
+                <button
+                  onClick={() => navigator.clipboard.writeText(currentItem)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 transition-colors"
                   title="نسخ"
                 >
-                  <Copy size={18} />
+                  <Copy size={14} />
                 </button>
-                {navigator.share && (
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
+                {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
+                  <button
+                    onClick={() => {
                       navigator.share({
                         title: 'الذكر الحكيم',
                         text: currentItem,
                       }).catch(console.error);
                     }}
-                    className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 hover:scale-110 transition-transform shadow-sm"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 transition-colors"
                     title="مشاركة"
                   >
-                    <Share2 size={18} />
+                    <Share2 size={14} />
                   </button>
                 )}
               </div>
             </motion.div>
           </AnimatePresence>
-
-          {/* Press Feedback */}
-          <motion.div 
-            className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent pointer-events-none"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: isAnimating ? 1 : 0 }}
-          />
         </motion.div>
 
-        {/* Counter Badge */}
-        <motion.div 
-          className="absolute -bottom-6 bg-gradient-to-br from-amber-800 to-amber-950 text-white px-8 py-3 rounded-[1.5rem] font-black text-3xl shadow-2xl border-2 border-white/20 z-30 flex items-baseline gap-2"
-          key={count}
-          initial={{ scale: 0.8, y: 10 }}
-          animate={{ scale: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 400, damping: 15 }}
-        >
+        <div className="absolute -bottom-5 bg-amber-800 dark:bg-amber-700 text-white px-5 py-1.5 rounded-xl font-bold text-lg shadow-md tabular-nums flex items-baseline gap-1.5 z-30">
           <span>{count + 1}</span>
-          <span className="text-sm opacity-40 font-medium">/ 99</span>
-        </motion.div>
-      </div>
-
-      {/* Instructions */}
-      <div className="text-center max-w-md relative z-10">
-        <p className="text-amber-900/50 dark:text-amber-200/30 text-xl font-medium italic leading-relaxed">
-          انقر على المركز للتسبيح. سيتم توليد أذكار مختلفة دون تكرار حتى تكتمل الدورة.
-        </p>
-      </div>
-
-      {/* Decorative Chain Tails */}
-      <div className="mt-12 flex flex-col items-center gap-3 opacity-20 group-hover:opacity-40 transition-opacity duration-1000">
-        <div className="w-1.5 h-12 bg-gradient-to-b from-amber-800 to-transparent rounded-full" />
-        <div className="w-8 h-8 rounded-full bg-amber-900 border-4 border-amber-600 shadow-inner" />
-        <div className="flex gap-2">
-          <div className="w-2.5 h-16 bg-amber-800 rounded-full rotate-12 origin-top animate-bounce" />
-          <div className="w-2.5 h-16 bg-amber-800 rounded-full -rotate-12 origin-top animate-bounce delay-150" />
+          <span className="text-xs opacity-70">/ 99</span>
         </div>
       </div>
+
+      <p className="text-center text-amber-900/60 dark:text-amber-200/50 text-xs sm:text-sm max-w-md">
+        انقر على الدائرة للتسبيح؛ تتجدد الأذكار تلقائياً دون تكرار حتى اكتمال الدورة.
+      </p>
     </div>
   );
 };

@@ -28,7 +28,7 @@ export const SpiritualVision: React.FC<SpiritualVisionProps> = ({ text, onClose 
   const [isUpdatingModels, setIsUpdatingModels] = useState(false);
   const [modelsUpdatedMessage, setModelsUpdatedMessage] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [modelsRefreshCounter, setModelsRefreshCounter] = useState(0);
+  const [, setModelsRefreshCounter] = useState(0);
 
   useEffect(() => {
     fetchAllProvidersModels(true).catch(console.error);
@@ -131,25 +131,6 @@ export const SpiritualVision: React.FC<SpiritualVisionProps> = ({ text, onClose 
     };
   }, [text, selectedProvider, selectedModel, refreshTrigger]);
 
-  const handleOpenExternal = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (!scene) return;
-    
-    if (scene.url.startsWith('data:')) {
-      try {
-        const response = await fetch(scene.url);
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
-        // We do not revoke immediately because the new tab needs time to load it
-        setTimeout(() => URL.revokeObjectURL(url), 60000);
-      } catch (err) {
-        console.error("Failed to open data URL", err);
-      }
-    } else {
-      window.open(scene.url, '_blank', 'noopener,noreferrer');
-    }
-  };
   const handleDownload = async () => {
     if (!scene) return;
     const safeCaption = scene.caption.substring(0, 50).replace(/[^a-zA-Z0-9\u0600-\u06FF\s-]/g, '').trim().replace(/\s+/g, '-');
@@ -186,58 +167,57 @@ export const SpiritualVision: React.FC<SpiritualVisionProps> = ({ text, onClose 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-xl"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-md"
       >
         <motion.div
-          initial={{ scale: 0.95, opacity: 0, y: 20 }}
+          initial={{ scale: 0.96, opacity: 0, y: 12 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.95, opacity: 0, y: 20 }}
-          className="relative w-full max-w-4xl bg-[#1c1917] rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] border border-white/10"
+          exit={{ scale: 0.96, opacity: 0, y: 12 }}
+          className="relative w-full max-w-4xl bg-[#171412] rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] border border-amber-900/40"
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white shadow-lg">
-                <Sparkles size={20} />
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600 to-amber-700 flex items-center justify-center text-white shadow-sm">
+                <Sparkles size={19} />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-amber-50">المولد الفني الذكي</h2>
-                <p className="text-xs text-amber-200/60 font-medium">تجسيد المعاني برؤية إبداعية</p>
+                <h2 className="text-lg font-bold text-amber-50">المولد الفني الذكي</h2>
+                <p className="text-xs text-amber-200/70">تجسيد المعاني برؤية إبداعية</p>
               </div>
             </div>
             
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowModelSelector(!showModelSelector)}
-                className={`p-2.5 rounded-xl transition-all ${showModelSelector ? 'bg-amber-500 text-white' : 'bg-white/5 text-amber-200/60 hover:bg-white/10 hover:text-amber-100'}`}
+                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${showModelSelector ? 'bg-amber-600 text-white' : 'bg-white/5 text-amber-200/70 hover:bg-white/10 hover:text-amber-100'}`}
                 title="إعدادات المزود والنموذج"
               >
-                <Settings2 size={20} />
+                <Settings2 size={18} />
               </button>
               <button
                 onClick={onClose}
-                className="p-2.5 rounded-xl bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+                className="w-9 h-9 rounded-xl bg-white/5 text-white/70 hover:bg-white/10 hover:text-white flex items-center justify-center transition-colors"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
           </div>
 
           {/* Scrollable Body */}
           <div className="flex-1 overflow-y-auto flex flex-col">
-            {/* Model Selector Dropdown */}
             <AnimatePresence>
               {showModelSelector && (
                 <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden border-b border-white/5 bg-black/20 shrink-0"
+                  className="overflow-hidden border-b border-white/10 bg-black/25 shrink-0"
                 >
-                  <div className="p-4 sm:p-6 space-y-4">
+                  <div className="p-4 sm:p-5 space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-amber-400/60 uppercase tracking-widest px-1">المزود</label>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-amber-400/80 px-1">المزود</label>
                         <select 
                           value={selectedProvider}
                           onChange={(e) => {
@@ -246,21 +226,21 @@ export const SpiritualVision: React.FC<SpiritualVisionProps> = ({ text, onClose 
                             const defaultModel = newProvider === 'gemini' ? 'gemini-3.5-flash' : (newProvider === 'pollinations' ? 'flux' : (newProvider === 'routeway' ? 'step-3.5-flash:free' : (AI_PROVIDERS[newProvider] as any).defaultModel));
                             setSelectedModel(defaultModel);
                           }}
-                          className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-sm outline-none focus:ring-2 focus:ring-amber-500/30 transition-all text-amber-50"
+                          className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm outline-none focus:ring-2 focus:ring-amber-500/30 transition-all text-amber-50"
                           dir="ltr"
                         >
                           {IMAGE_PROVIDERS.map(p => (
-                            <option key={p} value={p} className="bg-[#1c1917]">{AI_PROVIDERS[p].name}</option>
+                            <option key={p} value={p} className="bg-[#171412]">{AI_PROVIDERS[p].name}</option>
                           ))}
                         </select>
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <div className="flex items-center justify-between px-1">
-                          <label className="text-[10px] font-bold text-amber-400/60 uppercase tracking-widest">النموذج</label>
+                          <label className="text-xs font-bold text-amber-400/80">النموذج</label>
                           <button
                             onClick={handleRefreshModels}
                             disabled={isUpdatingModels}
-                            className="text-[10px] text-amber-400 flex items-center gap-1 disabled:opacity-50"
+                            className="text-xs text-amber-400 flex items-center gap-1 disabled:opacity-50"
                           >
                             {isUpdatingModels ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
                           </button>
@@ -268,17 +248,17 @@ export const SpiritualVision: React.FC<SpiritualVisionProps> = ({ text, onClose 
                         <select 
                           value={selectedModel}
                           onChange={(e) => setSelectedModel(e.target.value)}
-                          className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-sm outline-none focus:ring-2 focus:ring-amber-500/30 transition-all text-amber-50"
+                          className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm outline-none focus:ring-2 focus:ring-amber-500/30 transition-all text-amber-50"
                           dir="ltr"
                         >
                           {getDynamicImageModelsList(selectedProvider).map((m: string) => (
-                            <option key={m} value={m} className="bg-[#1c1917]">{m.split('/').pop()?.replace(':free', '') || m}</option>
+                            <option key={m} value={m} className="bg-[#171412]">{m.split('/').pop()?.replace(':free', '') || m}</option>
                           ))}
                         </select>
                       </div>
                     </div>
                     {modelsUpdatedMessage && (
-                      <div className="text-[10px] text-emerald-400 animate-pulse px-1">{modelsUpdatedMessage}</div>
+                      <div className="text-xs text-emerald-400 px-1">{modelsUpdatedMessage}</div>
                     )}
                   </div>
                 </motion.div>
@@ -286,113 +266,106 @@ export const SpiritualVision: React.FC<SpiritualVisionProps> = ({ text, onClose 
             </AnimatePresence>
 
             {/* Content */}
-            <div className="p-4 sm:p-6 flex flex-col md:flex-row gap-6 shrink-0">
-            
-            {/* Source Text Section */}
-            <div className="w-full md:w-1/3 flex flex-col space-y-4">
-              <div className="bg-white/5 rounded-2xl p-4 sm:p-6 border border-white/5 flex-1 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2"></div>
-                <h3 className="text-sm font-bold text-amber-400 mb-3 flex items-center gap-2">
-                  <Sparkles size={16} /> النص المستلهم
-                </h3>
-                <p className="text-amber-50/80 leading-relaxed text-sm sm:text-base font-medium relative z-10" dir="rtl">
-                  {text}
-                </p>
-              </div>
-            </div>
-
-            {/* Visual Section */}
-            <div className="w-full md:w-2/3 flex flex-col">
-              <div className="relative aspect-square w-full max-w-lg mx-auto bg-black/40 rounded-3xl border border-white/10 overflow-hidden shadow-inner flex items-center justify-center group">
-                
-                {status === 'analyzing' && (
-                  <div className="flex flex-col items-center justify-center text-amber-200/60 space-y-4">
-                    <Loader2 size={40} className="animate-spin text-amber-500" />
-                    <p className="font-bold tracking-wider animate-pulse" dir="rtl">جاري استنباط المشهد...</p>
-                  </div>
-                )}
-
-                {status === 'generating' && (
-                  <div className="flex flex-col items-center justify-center text-amber-200/60 space-y-4">
-                    <div className="relative w-20 h-20">
-                      <div className="absolute inset-0 border-4 border-amber-500/30 rounded-full"></div>
-                      <div className="absolute inset-0 border-4 border-amber-500 rounded-full border-t-transparent animate-spin"></div>
-                      <ImageIcon size={32} className="absolute inset-0 m-auto text-amber-500/50" />
-                    </div>
-                    <p className="font-bold tracking-wider animate-pulse text-amber-500" dir="rtl">جاري رسم المشهد الفريد...</p>
-                    <p className="text-xs opacity-70" dir="rtl">قد يستغرق هذا بضع ثوانٍ</p>
-                  </div>
-                )}
-
-                {status === 'error' && (
-                  <div className="flex flex-col items-center justify-center text-red-400 space-y-4 p-8 text-center bg-red-500/5 w-full h-full">
-                    <X size={48} className="text-red-500" />
-                    <h3 className="text-xl font-bold" dir="rtl">تعذر توليد المشاهد</h3>
-                    <p className="text-sm text-red-300/80 max-w-xs" dir="rtl">{errorMsg}</p>
-                    <button
-                      onClick={() => setStatus('idle')}
-                      className="mt-4 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold transition-colors flex items-center gap-2"
-                      dir="rtl"
-                    >
-                      <RefreshCw size={18} />
-                      إعادة المحاولة
-                    </button>
-                  </div>
-                )}
-
-                {status === 'done' && scene && (
-                  <>
-                    <img 
-                      src={scene.url} 
-                      alt={scene.caption} 
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                      loading="lazy"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
-                      <p className="text-white text-sm md:text-base font-medium leading-relaxed drop-shadow-md" dir="rtl">
-                        {scene.caption}
-                      </p>
-                    </div>
-                    <div className="absolute top-4 left-4 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
-                      <button
-                        onClick={handleDownload}
-                        className="p-3 bg-black/50 hover:bg-amber-500 backdrop-blur-md rounded-xl text-white transition-all shadow-lg"
-                        title="تحميل الصورة"
-                      >
-                        <Download size={20} />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setStatus('idle');
-                          setScene(null);
-                          setRefreshTrigger(prev => prev + 1);
-                        }}
-                        className="p-3 bg-black/50 hover:bg-amber-500 backdrop-blur-md rounded-xl text-white transition-all shadow-lg"
-                        title="إعادة توليد المشهد"
-                      >
-                        <RefreshCw size={20} />
-                      </button>
-                      <button
-                        onClick={handleOpenExternal}
-                        className="p-3 bg-black/50 hover:bg-amber-500 backdrop-blur-md rounded-xl text-white transition-all shadow-lg"
-                        title="فتح في علامة تبويب جديدة"
-                      >
-                        <ExternalLink size={20} />
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-              
-              {status === 'done' && scene && (
-                <div className="mt-6 text-center">
-                   <p className="text-amber-100/80 text-sm md:text-base font-medium leading-relaxed max-w-lg mx-auto" dir="rtl">
-                    {scene.caption}
+            <div className="p-4 sm:p-6 flex flex-col md:flex-row gap-5 shrink-0">
+              <div className="w-full md:w-1/3 flex flex-col">
+                <div className="bg-white/5 rounded-2xl p-4 sm:p-5 border border-white/10 flex-1">
+                  <h3 className="text-sm font-bold text-amber-400 mb-2.5 flex items-center gap-2">
+                    <Sparkles size={15} /> النص المستلهم
+                  </h3>
+                  <p className="text-amber-50/85 leading-relaxed text-sm sm:text-base" dir="rtl">
+                    {text}
                   </p>
                 </div>
-              )}
+              </div>
 
-            </div>
+              <div className="w-full md:w-2/3 flex flex-col">
+                <div className="relative aspect-square w-full max-w-lg mx-auto bg-black/40 rounded-2xl border border-white/10 overflow-hidden flex items-center justify-center group">
+                  {status === 'analyzing' && (
+                    <div className="flex flex-col items-center justify-center text-amber-200/75 space-y-3">
+                      <Loader2 size={34} className="animate-spin text-amber-500" />
+                      <p className="font-bold text-sm" dir="rtl">جاري استنباط المشهد...</p>
+                    </div>
+                  )}
+
+                  {status === 'generating' && (
+                    <div className="flex flex-col items-center justify-center text-amber-200/75 space-y-3">
+                      <div className="relative w-16 h-16">
+                        <div className="absolute inset-0 border-4 border-amber-500/30 rounded-full" />
+                        <div className="absolute inset-0 border-4 border-amber-500 rounded-full border-t-transparent animate-spin" />
+                        <ImageIcon size={26} className="absolute inset-0 m-auto text-amber-500/60" />
+                      </div>
+                      <p className="font-bold text-sm text-amber-400" dir="rtl">جاري رسم المشهد الفريد...</p>
+                      <p className="text-xs opacity-70" dir="rtl">قد يستغرق هذا بضع ثوانٍ</p>
+                    </div>
+                  )}
+
+                  {status === 'error' && (
+                    <div className="flex flex-col items-center justify-center text-red-400 space-y-3 p-6 text-center bg-red-500/5 w-full h-full">
+                      <X size={40} className="text-red-500" />
+                      <h3 className="text-lg font-bold" dir="rtl">تعذر توليد المشهد</h3>
+                      <p className="text-xs text-red-300/80 max-w-xs" dir="rtl">{errorMsg}</p>
+                      <button
+                        onClick={() => setStatus('idle')}
+                        className="mt-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold transition-colors flex items-center gap-2"
+                        dir="rtl"
+                      >
+                        <RefreshCw size={16} />
+                        إعادة المحاولة
+                      </button>
+                    </div>
+                  )}
+
+                  {status === 'done' && scene && (
+                    <>
+                      <img 
+                        src={scene.url} 
+                        alt={scene.caption} 
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                        loading="lazy"
+                      />
+                      <div className="absolute top-3 left-3 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
+                        <button
+                          onClick={handleDownload}
+                          className="w-9 h-9 bg-black/60 hover:bg-amber-600 backdrop-blur-md rounded-xl text-white flex items-center justify-center transition-colors shadow-md"
+                          title="تحميل الصورة"
+                        >
+                          <Download size={17} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setStatus('idle');
+                            setScene(null);
+                            setRefreshTrigger(prev => prev + 1);
+                          }}
+                          className="w-9 h-9 bg-black/60 hover:bg-amber-600 backdrop-blur-md rounded-xl text-white flex items-center justify-center transition-colors shadow-md"
+                          title="إعادة توليد المشهد"
+                        >
+                          <RefreshCw size={17} />
+                        </button>
+                        {!scene.url.startsWith('data:') && (
+                          <a
+                            href={scene.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-9 h-9 bg-black/60 hover:bg-amber-600 backdrop-blur-md rounded-xl text-white flex items-center justify-center transition-colors shadow-md"
+                            title="فتح في علامة تبويب جديدة"
+                          >
+                            <ExternalLink size={17} />
+                          </a>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+                
+                {status === 'done' && scene && (
+                  <div className="mt-4 text-center">
+                    <p className="text-amber-100/85 text-sm font-medium leading-relaxed max-w-lg mx-auto" dir="rtl">
+                      {scene.caption}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </motion.div>

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, Clock, Share2, Copy } from 'lucide-react';
-import { motion } from 'motion/react';
 import { ReadAloud } from './ReadAloud';
 
 export const HijriClock = () => {
@@ -30,72 +29,60 @@ export const HijriClock = () => {
   const hours12 = hours % 12 || 12;
 
   const padZero = (num: number) => num.toString().padStart(2, '0');
-
   const timeString = `${padZero(hours12)}:${padZero(minutes)}:${padZero(seconds)}`;
-
   const fullDateTimeText = `الوقت الآن هو ${timeString} ${ampm}، والتاريخ الهجري هو ${hijriDate}، والتاريخ الميلادي هو ${gregorianDate}`;
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="w-full max-w-md mx-auto mb-6 bg-white/90 dark:bg-[#1c1917]/90 backdrop-blur-xl rounded-[2rem] p-6 border border-amber-200/50 dark:border-amber-900/50 shadow-xl"
-    >
-      <div className="flex flex-col items-center gap-5">
-        {/* Time Section */}
-        <div className="flex flex-col items-center w-full">
-          <div className="flex items-center justify-center gap-4 text-amber-900 dark:text-amber-100 mb-3">
-            <Clock size={32} className="animate-pulse text-amber-600 dark:text-amber-500" />
-            <div className="flex items-baseline gap-2" dir="ltr">
-              <span className="text-5xl font-bold font-mono tracking-wider drop-shadow-sm">{timeString}</span>
-              <span className="text-2xl font-bold text-amber-600 dark:text-amber-500">{ampm}</span>
-            </div>
+    <div className="w-full h-full bg-white/95 dark:bg-[#171412]/95 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-900/40 shadow-sm flex flex-col justify-between gap-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 text-amber-950 dark:text-amber-100">
+          <div className="w-9 h-9 rounded-xl bg-amber-100/80 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+            <Clock size={18} />
           </div>
-          
-          {/* Action Buttons */}
-          <div className="flex items-center justify-center gap-3 bg-amber-50/50 dark:bg-amber-900/20 py-2 px-6 rounded-full border border-amber-100 dark:border-amber-900/30">
-            <ReadAloud text={fullDateTimeText} />
-            <div className="w-px h-6 bg-amber-200 dark:bg-amber-800/50 mx-1"></div>
-            <button
-              onClick={() => navigator.clipboard.writeText(fullDateTimeText)}
-              className="p-2 text-amber-700 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-800 rounded-full transition-colors"
-              title="نسخ"
-            >
-              <Copy size={18} />
-            </button>
-            {navigator.share && (
-              <>
-                <div className="w-px h-6 bg-amber-200 dark:bg-amber-800/50 mx-1"></div>
-                <button
-                  onClick={() => {
-                    navigator.share({
-                      title: 'الوقت والتاريخ',
-                      text: fullDateTimeText,
-                    }).catch(console.error);
-                  }}
-                  className="p-2 text-amber-700 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-800 rounded-full transition-colors"
-                  title="مشاركة"
-                >
-                  <Share2 size={18} />
-                </button>
-              </>
-            )}
+          <div className="flex items-baseline gap-1.5 tabular-nums" dir="ltr">
+            <span className="text-2xl sm:text-3xl font-bold font-mono tracking-tight">{timeString}</span>
+            <span className="text-sm font-bold text-amber-700 dark:text-amber-400">{ampm}</span>
           </div>
         </div>
-        
-        <div className="w-full h-px bg-gradient-to-r from-transparent via-amber-200 dark:via-amber-800/50 to-transparent"></div>
 
-        {/* Date Section */}
-        <div className="flex flex-col items-center gap-2 w-full">
-          <div className="flex items-center justify-center gap-3 text-amber-900 dark:text-amber-200 font-bold bg-amber-100/50 dark:bg-amber-900/40 py-3 px-6 rounded-2xl w-full border border-amber-200/50 dark:border-amber-800/30">
-            <CalendarIcon size={22} className="text-amber-600 dark:text-amber-500" />
-            <span className="text-xl">{hijriDate}</span>
-          </div>
-          <div className="text-sm text-amber-700/80 dark:text-amber-500/80 font-medium mt-1">
-            الموافق: {gregorianDate} م
-          </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <ReadAloud
+            text={fullDateTimeText}
+            buttonClassName="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-300 transition-colors"
+          />
+          <button
+            onClick={() => navigator.clipboard.writeText(fullDateTimeText)}
+            className="w-8 h-8 flex items-center justify-center text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-lg transition-colors"
+            title="نسخ الوقت والتاريخ"
+          >
+            <Copy size={15} />
+          </button>
+          {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
+            <button
+              onClick={() => {
+                navigator.share({
+                  title: 'الوقت والتاريخ',
+                  text: fullDateTimeText,
+                }).catch(console.error);
+              }}
+              className="w-8 h-8 flex items-center justify-center text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-lg transition-colors"
+              title="مشاركة"
+            >
+              <Share2 size={15} />
+            </button>
+          )}
         </div>
       </div>
-    </motion.div>
+
+      <div className="pt-3 border-t border-amber-100/70 dark:border-amber-900/30 flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm">
+        <div className="flex items-center gap-2 text-amber-950 dark:text-amber-100 font-bold">
+          <CalendarIcon size={15} className="text-amber-600 dark:text-amber-400 shrink-0" />
+          <span>{hijriDate}</span>
+        </div>
+        <span className="text-amber-800/70 dark:text-amber-300/70 font-medium">
+          {gregorianDate} م
+        </span>
+      </div>
+    </div>
   );
 };

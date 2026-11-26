@@ -1,4 +1,3 @@
-import React from 'react';
 import { Book, Sparkles, Lightbulb, History, ShieldAlert, MessageSquare, Heart, Users, Zap, Leaf } from 'lucide-react';
 
 export const SUGGESTIONS = [

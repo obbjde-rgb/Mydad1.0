@@ -1,4 +1,3 @@
-import { GoogleGenAI, Modality, ThinkingLevel } from "@google/genai";
 import { safeLocalStorageGet, safeLocalStorageSet, parseAIJson } from "../lib/utils";
 
 export const AI_PROVIDERS = {
